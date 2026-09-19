@@ -8,11 +8,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # =========================
 # 🔐 SECURITY
 # =========================
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'unsafe-secret')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-only-secret-key')
 
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
 
 
 # =========================
@@ -124,8 +127,14 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# ✅ WHITENOISE
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 
 # =========================
@@ -137,5 +146,11 @@ AUTH_USER_MODEL = 'accounts.User'
 # =========================
 # 🔒 SECURITY (OPTIONAL)
 # =========================
-CSRF_COOKIE_SECURE = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
+CSRF_TRUSTED_ORIGINS = []
+
+if os.environ.get('CSRF_TRUSTED_ORIGINS'):
+    CSRF_TRUSTED_ORIGINS = [
+        origin.strip()
+        for origin in os.environ['CSRF_TRUSTED_ORIGINS'].split(',')
+        if origin.strip()
+    ]
