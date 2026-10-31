@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.db.models import Sum
-from django.http import HttpResponse   # ✅ IMPORTANT ADD
 
 from .models import User
 from banking.models import BankAccount, Transaction, Loan
@@ -142,31 +141,3 @@ def unblock_user(request, user_id):
 def logout_view(request):
     logout(request)
     return redirect('/login/')
-
-
-# =========================
-# 🔥 CREATE ADMIN (FOR RENDER)
-# =========================
-def create_admin(request):
-
-    if not User.objects.filter(username="BEBANK").exists():
-        User.objects.create_user(
-            username="BEBANK",
-            password="2006",
-            role="ADMIN"
-        )
-        return HttpResponse("Admin created ✅")
-
-    return HttpResponse("Admin already exists 👍")
-
-def create_employee(request):
-
-    if not User.objects.filter(username="employee1").exists():
-        User.objects.create_user(
-            username="NITHISH KUMAR",
-            password="black2006",
-            role="EMPLOYEE"
-        )
-        return HttpResponse("Employee created ✅")
-
-    return HttpResponse("Employee already exists 👍")
