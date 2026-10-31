@@ -22,7 +22,7 @@ if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
 # 📦 INSTALLED APPS
 # =========================
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'core.apps.BebankAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
