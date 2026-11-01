@@ -1,6 +1,7 @@
 from django.test import TestCase, RequestFactory, Client
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
+from django.urls import reverse
 from django.contrib.auth.models import AnonymousUser
 from django.contrib import admin
 from django.contrib.messages.storage.fallback import FallbackStorage
@@ -15,6 +16,7 @@ class RbacDecoratorTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.client = Client()
+        self.csrf_client = Client(enforce_csrf_checks=True)
 
         # Test users
         self.customer = User.objects.create_user(
@@ -284,6 +286,7 @@ class AccountsViewsRbacTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.client = Client()
+        self.csrf_client = Client(enforce_csrf_checks=True)
 
         # Users across roles and states
         self.customer = User.objects.create_user(
@@ -309,6 +312,12 @@ class AccountsViewsRbacTests(TestCase):
         )
         self.target_user = User.objects.create_user(
             username='view_target', password='pwd', role='CUSTOMER'
+        )
+        self.non_superuser_admin = User.objects.create_user(
+            username='view_ns_adm', password='pwd', role='ADMIN', is_staff=True, is_superuser=False
+        )
+        self.target_superuser = User.objects.create_superuser(
+            username='view_target_su', password='pwd', role='ADMIN', is_staff=True
         )
 
         # Customer account for dashboard rendering
@@ -413,50 +422,211 @@ class AccountsViewsRbacTests(TestCase):
     # 5. Admin User Block / Unblock Actions
     # ---------------------------------------------------------
 
-    def test_customer_cannot_block_or_unblock_users(self):
-        """CUSTOMER role cannot execute block_user or unblock_user view actions."""
-        req_block = self.factory.get(f'/admin/block/{self.target_user.id}/')
-        req_block.user = self.customer
-        with self.assertRaises(PermissionDenied):
-            block_user(req_block, self.target_user.id)
+    def test_anonymous_cannot_block_or_unblock_users(self):
+        """Unauthenticated requests cannot block or unblock users and redirect to login."""
+        block_url = reverse('block_user', args=[self.target_user.id])
+        unblock_url = reverse('unblock_user', args=[self.target_user.id])
 
-        req_unblock = self.factory.get(f'/admin/unblock/{self.target_user.id}/')
-        req_unblock.user = self.customer
-        with self.assertRaises(PermissionDenied):
-            unblock_user(req_unblock, self.target_user.id)
+        # Anonymous GET
+        resp_block_get = self.client.get(block_url)
+        self.assertEqual(resp_block_get.status_code, 302)
+        self.assertIn(f'/login/?next={block_url}', resp_block_get.url)
+
+        resp_unblock_get = self.client.get(unblock_url)
+        self.assertEqual(resp_unblock_get.status_code, 302)
+        self.assertIn(f'/login/?next={unblock_url}', resp_unblock_get.url)
+
+        # Anonymous POST
+        resp_block_post = self.client.post(block_url)
+        self.assertEqual(resp_block_post.status_code, 302)
+        self.assertIn(f'/login/?next={block_url}', resp_block_post.url)
+
+        resp_unblock_post = self.client.post(unblock_url)
+        self.assertEqual(resp_unblock_post.status_code, 302)
+        self.assertIn(f'/login/?next={unblock_url}', resp_unblock_post.url)
+
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.account_locked)
+
+    def test_customer_cannot_block_or_unblock_users(self):
+        """CUSTOMER role cannot execute block_user or unblock_user (HTTP 403 Forbidden)."""
+        block_url = reverse('block_user', args=[self.target_user.id])
+        unblock_url = reverse('unblock_user', args=[self.target_user.id])
+        self.client.force_login(self.customer)
+
+        resp_block_get = self.client.get(block_url)
+        self.assertEqual(resp_block_get.status_code, 403)
+
+        resp_block_post = self.client.post(block_url)
+        self.assertEqual(resp_block_post.status_code, 403)
+
+        resp_unblock_get = self.client.get(unblock_url)
+        self.assertEqual(resp_unblock_get.status_code, 403)
+
+        resp_unblock_post = self.client.post(unblock_url)
+        self.assertEqual(resp_unblock_post.status_code, 403)
+
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.account_locked)
 
     def test_employee_cannot_block_or_unblock_users(self):
-        """EMPLOYEE role cannot execute block_user or unblock_user view actions."""
-        req_block = self.factory.get(f'/admin/block/{self.target_user.id}/')
-        req_block.user = self.employee
-        with self.assertRaises(PermissionDenied):
-            block_user(req_block, self.target_user.id)
+        """EMPLOYEE role cannot execute block_user or unblock_user (HTTP 403 Forbidden)."""
+        block_url = reverse('block_user', args=[self.target_user.id])
+        unblock_url = reverse('unblock_user', args=[self.target_user.id])
+        self.client.force_login(self.employee)
 
-        req_unblock = self.factory.get(f'/admin/unblock/{self.target_user.id}/')
-        req_unblock.user = self.employee
-        with self.assertRaises(PermissionDenied):
-            unblock_user(req_unblock, self.target_user.id)
+        resp_block_get = self.client.get(block_url)
+        self.assertEqual(resp_block_get.status_code, 403)
 
-    def test_admin_can_block_and_unblock_users(self):
-        """ADMIN role can execute block_user and unblock_user actions successfully."""
-        # Test blocking
-        req_block = self.factory.get(f'/admin/block/{self.target_user.id}/')
-        req_block.user = self.admin
-        setattr(req_block, 'session', {})
-        setattr(req_block, '_messages', FallbackStorage(req_block))
+        resp_block_post = self.client.post(block_url)
+        self.assertEqual(resp_block_post.status_code, 403)
 
-        resp_block = block_user(req_block, self.target_user.id)
+        resp_unblock_get = self.client.get(unblock_url)
+        self.assertEqual(resp_unblock_get.status_code, 403)
+
+        resp_unblock_post = self.client.post(unblock_url)
+        self.assertEqual(resp_unblock_post.status_code, 403)
+
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.account_locked)
+
+    def test_admin_get_block_or_unblock_rejected_method_not_allowed(self):
+        """ADMIN GET requests to block_user and unblock_user receive HTTP 405 Method Not Allowed."""
+        block_url = reverse('block_user', args=[self.target_user.id])
+        unblock_url = reverse('unblock_user', args=[self.target_user.id])
+        self.client.force_login(self.admin)
+
+        resp_block = self.client.get(block_url)
+        self.assertEqual(resp_block.status_code, 405)
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.account_locked)
+
+        # Set user locked first to test unblock
+        self.target_user.account_locked = True
+        self.target_user.save(update_fields=['account_locked'])
+
+        resp_unblock = self.client.get(unblock_url)
+        self.assertEqual(resp_unblock.status_code, 405)
+        self.target_user.refresh_from_db()
+        self.assertTrue(self.target_user.account_locked)
+
+    def test_admin_post_without_csrf_rejected(self):
+        """ADMIN POST requests without CSRF token receive HTTP 403 Forbidden."""
+        block_url = reverse('block_user', args=[self.target_user.id])
+        unblock_url = reverse('unblock_user', args=[self.target_user.id])
+        self.csrf_client.force_login(self.admin)
+
+        resp_block = self.csrf_client.post(block_url)
+        self.assertEqual(resp_block.status_code, 403)
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.account_locked)
+
+        self.target_user.account_locked = True
+        self.target_user.save(update_fields=['account_locked'])
+
+        resp_unblock = self.csrf_client.post(unblock_url)
+        self.assertEqual(resp_unblock.status_code, 403)
+        self.target_user.refresh_from_db()
+        self.assertTrue(self.target_user.account_locked)
+
+    def test_admin_post_with_csrf_succeeds_and_toggles_lock_state(self):
+        """ADMIN POST requests with valid CSRF token block and unblock target user."""
+        block_url = reverse('block_user', args=[self.target_user.id])
+        unblock_url = reverse('unblock_user', args=[self.target_user.id])
+        self.csrf_client.force_login(self.admin)
+
+        # Obtain a valid CSRF cookie from a form page
+        get_res = self.csrf_client.get('/login/')
+        csrf_token = get_res.cookies['csrftoken'].value
+
+        # Block target user
+        resp_block = self.csrf_client.post(
+            block_url,
+            data={'csrfmiddlewaretoken': csrf_token},
+            HTTP_REFERER='/admin-dashboard/'
+        )
+        self.assertEqual(resp_block.status_code, 302)
+        self.assertRedirects(resp_block, '/admin-dashboard/')
+        self.target_user.refresh_from_db()
+        self.assertTrue(self.target_user.account_locked)
+
+        # Unblock target user
+        resp_unblock = self.csrf_client.post(
+            unblock_url,
+            data={'csrfmiddlewaretoken': csrf_token},
+            HTTP_REFERER='/admin-dashboard/'
+        )
+        self.assertEqual(resp_unblock.status_code, 302)
+        self.assertRedirects(resp_unblock, '/admin-dashboard/')
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.account_locked)
+
+    def test_admin_cannot_block_self(self):
+        """Administrators are prohibited from blocking their own account (HTTP 403 Forbidden)."""
+        block_url = reverse('block_user', args=[self.admin.id])
+        self.client.force_login(self.admin)
+        resp = self.client.post(block_url)
+        self.assertEqual(resp.status_code, 403)
+        self.admin.refresh_from_db()
+        self.assertFalse(self.admin.account_locked)
+
+        # Also verify non-superuser admin cannot block self
+        ns_block_url = reverse('block_user', args=[self.non_superuser_admin.id])
+        self.client.force_login(self.non_superuser_admin)
+        resp_ns = self.client.post(ns_block_url)
+        self.assertEqual(resp_ns.status_code, 403)
+        self.non_superuser_admin.refresh_from_db()
+        self.assertFalse(self.non_superuser_admin.account_locked)
+
+    def test_non_superuser_admin_cannot_block_superuser(self):
+        """Non-superuser admin cannot block a superuser account (HTTP 403 Forbidden)."""
+        block_url = reverse('block_user', args=[self.admin.id])
+        self.client.force_login(self.non_superuser_admin)
+        resp = self.client.post(block_url)
+        self.assertEqual(resp.status_code, 403)
+        self.admin.refresh_from_db()
+        self.assertFalse(self.admin.account_locked)
+
+    def test_non_superuser_admin_cannot_unblock_superuser(self):
+        """Non-superuser admin cannot unblock a superuser account (HTTP 403 Forbidden)."""
+        self.target_superuser.account_locked = True
+        self.target_superuser.save(update_fields=['account_locked'])
+
+        unblock_url = reverse('unblock_user', args=[self.target_superuser.id])
+        self.client.force_login(self.non_superuser_admin)
+        resp = self.client.post(unblock_url)
+        self.assertEqual(resp.status_code, 403)
+        self.target_superuser.refresh_from_db()
+        self.assertTrue(self.target_superuser.account_locked)
+
+    def test_superuser_can_block_and_unblock_other_superuser(self):
+        """Superuser admin can block and unblock another superuser account."""
+        self.client.force_login(self.admin)
+        block_url = reverse('block_user', args=[self.target_superuser.id])
+        unblock_url = reverse('unblock_user', args=[self.target_superuser.id])
+
+        resp_block = self.client.post(block_url)
+        self.assertEqual(resp_block.status_code, 302)
+        self.target_superuser.refresh_from_db()
+        self.assertTrue(self.target_superuser.account_locked)
+
+        resp_unblock = self.client.post(unblock_url)
+        self.assertEqual(resp_unblock.status_code, 302)
+        self.target_superuser.refresh_from_db()
+        self.assertFalse(self.target_superuser.account_locked)
+
+    def test_non_superuser_admin_can_block_and_unblock_regular_user(self):
+        """Non-superuser admin can block and unblock standard users."""
+        self.client.force_login(self.non_superuser_admin)
+        block_url = reverse('block_user', args=[self.target_user.id])
+        unblock_url = reverse('unblock_user', args=[self.target_user.id])
+
+        resp_block = self.client.post(block_url)
         self.assertEqual(resp_block.status_code, 302)
         self.target_user.refresh_from_db()
         self.assertTrue(self.target_user.account_locked)
 
-        # Test unblocking
-        req_unblock = self.factory.get(f'/admin/unblock/{self.target_user.id}/')
-        req_unblock.user = self.admin
-        setattr(req_unblock, 'session', {})
-        setattr(req_unblock, '_messages', FallbackStorage(req_unblock))
-
-        resp_unblock = unblock_user(req_unblock, self.target_user.id)
+        resp_unblock = self.client.post(unblock_url)
         self.assertEqual(resp_unblock.status_code, 302)
         self.target_user.refresh_from_db()
         self.assertFalse(self.target_user.account_locked)

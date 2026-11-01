@@ -14,5 +14,8 @@ urlpatterns = [
 
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
 
+    path('users/<int:user_id>/block/', views.block_user, name='block_user'),
+    path('users/<int:user_id>/unblock/', views.unblock_user, name='unblock_user'),
+
     path('logout/', views.logout_view, name='logout'),
 ]

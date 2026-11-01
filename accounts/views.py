@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.db.models import Sum
+from django.views.decorators.http import require_POST
 
 from .models import User
 from .decorators import role_required
@@ -119,11 +121,21 @@ def admin_dashboard(request):
 # BLOCK USER
 # =========================
 @role_required('ADMIN')
+@require_POST
 def block_user(request, user_id):
 
     user = get_object_or_404(User, id=user_id)
+
+    # 🔴 SELF-LOCKOUT GUARD
+    if request.user.id == user.id:
+        raise PermissionDenied("Administrators cannot block their own account.")
+
+    # 🔴 SUPERUSER PROTECTION
+    if getattr(user, 'is_superuser', False) and not getattr(request.user, 'is_superuser', False):
+        raise PermissionDenied("Non-superuser administrators cannot block a superuser account.")
+
     user.account_locked = True
-    user.save()
+    user.save(update_fields=['account_locked'])
 
     messages.success(request, "User blocked 🚫")
 
@@ -134,11 +146,17 @@ def block_user(request, user_id):
 # UNBLOCK USER
 # =========================
 @role_required('ADMIN')
+@require_POST
 def unblock_user(request, user_id):
 
     user = get_object_or_404(User, id=user_id)
+
+    # 🔴 SUPERUSER PROTECTION
+    if getattr(user, 'is_superuser', False) and not getattr(request.user, 'is_superuser', False):
+        raise PermissionDenied("Non-superuser administrators cannot unblock a superuser account.")
+
     user.account_locked = False
-    user.save()
+    user.save(update_fields=['account_locked'])
 
     messages.success(request, "User unblocked ✅")
 
