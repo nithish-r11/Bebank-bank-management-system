@@ -1,10 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, Http404
+from django.core.exceptions import ValidationError
+import logging
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum
-from django.db import transaction
+from django.db import transaction, DatabaseError
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+
+logger = logging.getLogger(__name__)
 
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib import colors
@@ -15,6 +19,14 @@ from accounts.models import User
 from accounts.decorators import role_required
 from .models import BankAccount, Transaction, FixedDeposit, Loan
 
+# Dynamically derive maximum opening balance and precision from BankAccount metadata to prevent drift
+_balance_field = BankAccount._meta.get_field('balance')
+MAX_BALANCE = Decimal(
+    '9' * (_balance_field.max_digits - _balance_field.decimal_places) +
+    ('.' + '9' * _balance_field.decimal_places if _balance_field.decimal_places > 0 else '')
+)
+MAX_DECIMAL_PLACES = _balance_field.decimal_places
+
 
 # =========================
 # CREATE ACCOUNT
@@ -24,20 +36,59 @@ def create_account_view(request):
 
     if request.method == "POST":
 
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        account_type = request.POST.get("account_type")
-        balance = request.POST.get("balance")
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        account_type = request.POST.get("account_type", "").strip()
+        balance_raw = request.POST.get("balance")
 
-        email = request.POST.get("email")
-        phone = request.POST.get("phone")
+        email = request.POST.get("email", "").strip()
+        phone = request.POST.get("phone", "").strip()
         aadhaar = request.POST.get("aadhaar", "").replace(" ", "")
         pan = request.POST.get("pan", "").replace(" ", "")
-        address = request.POST.get("address")
-        pincode = request.POST.get("pincode")
+        address = request.POST.get("address", "").strip()
+        pincode = request.POST.get("pincode", "").strip()
+
+        if not username:
+            messages.error(request, "Username is required ❌")
+            return redirect("create_account")
+
+        if not password:
+            messages.error(request, "Password is required ❌")
+            return redirect("create_account")
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already exists ❌")
+            return redirect("create_account")
+
+        if account_type not in dict(BankAccount.ACCOUNT_TYPE):
+            messages.error(request, "Invalid account type selected ❌")
+            return redirect("create_account")
+
+        # 🔴 OPENING BALANCE VALIDATION (Decimal-based)
+        if balance_raw is None or str(balance_raw).strip() == "":
+            messages.error(request, "Initial balance is required ❌")
+            return redirect("create_account")
+
+        try:
+            balance = Decimal(str(balance_raw).strip())
+        except (TypeError, ValueError, InvalidOperation):
+            messages.error(request, "Invalid initial balance ❌")
+            return redirect("create_account")
+
+        if not balance.is_finite():
+            messages.error(request, "Invalid initial balance ❌")
+            return redirect("create_account")
+
+        if balance < Decimal('0'):
+            messages.error(request, "Initial balance cannot be negative ❌")
+            return redirect("create_account")
+
+        if balance.as_tuple().exponent < -MAX_DECIMAL_PLACES:
+            messages.error(request, f"Initial balance cannot have more than {MAX_DECIMAL_PLACES} decimal places ❌")
+            return redirect("create_account")
+
+        if balance > MAX_BALANCE:
+            messages.error(request, "Initial balance exceeds maximum allowed limit ❌")
             return redirect("create_account")
 
         if len(aadhaar) != 12 or not aadhaar.isdigit():
@@ -52,23 +103,30 @@ def create_account_view(request):
             messages.error(request, "Pincode must be 6 digits ❌")
             return redirect("create_account")
 
-        user = User.objects.create_user(
-            username=username,
-            password=password,
-            role="CUSTOMER"
-        )
+        # 🔴 ATOMIC USER + BANKACCOUNT CREATION (Rolls back User on BankAccount failure)
+        try:
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=username,
+                    password=password,
+                    role="CUSTOMER"
+                )
 
-        account = BankAccount.objects.create(
-            user=user,
-            account_type=account_type,
-            balance=balance,
-            email=email,
-            phone=phone,
-            aadhaar=aadhaar,
-            pan=pan,
-            address=address,
-            pincode=pincode
-        )
+                account = BankAccount.objects.create(
+                    user=user,
+                    account_type=account_type,
+                    balance=balance,
+                    email=email,
+                    phone=phone,
+                    aadhaar=aadhaar,
+                    pan=pan,
+                    address=address,
+                    pincode=pincode
+                )
+        except (DatabaseError, ValidationError):
+            logger.exception("Account creation failed during database transaction.")
+            messages.error(request, "Account creation failed due to a server error. Please try again ❌")
+            return redirect("create_account")
 
         messages.success(request, "Account Created Successfully ✅")
         return render(request, "account_details.html", {"account": account})
