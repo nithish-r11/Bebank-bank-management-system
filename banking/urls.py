@@ -34,6 +34,8 @@ urlpatterns = [
     path('fd/<int:fd_id>/', views.fd_view, name="fd_detail"),
     path('loan/', views.loan_view, name="loan"),
     path('loan/<int:loan_id>/', views.loan_view, name="loan_detail"),
+    path('loan/<int:loan_id>/approve/', views.approve_loan, name='approve_loan'),
+    path('loan/<int:loan_id>/reject/', views.reject_loan, name='reject_loan'),
 
     # =========================
     # ANALYTICS

@@ -101,8 +101,14 @@ Transactions
 <td>{{ l.duration_months }}</td>
 <td>{{ l.status }}</td>
 <td>
-<a href="/approve-loan/{{ l.id }}/" class="btn btn-success btn-sm">Approve</a>
-<a href="/reject-loan/{{ l.id }}/" class="btn btn-danger btn-sm">Reject</a>
+<form method="POST" action="{% url 'approve_loan' l.id %}" style="display:inline;">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-success btn-sm">Approve</button>
+</form>
+<form method="POST" action="{% url 'reject_loan' l.id %}" style="display:inline;">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+</form>
 </td>
 </tr>
 {% endfor %}

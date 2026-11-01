@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, Http404
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum
+from django.db import transaction
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -102,18 +104,26 @@ def withdraw_view(request):
             messages.error(request, "Enter valid amount ❌")
             return redirect("withdraw")
 
-        if account.balance < amount:
-            messages.error(request, "Insufficient balance ❌")
-            return redirect("withdraw")
+        with transaction.atomic():
+            # Acquire row lock and re-validate balance inside the atomic transaction
+            locked_account = get_object_or_404(
+                BankAccount.objects.select_for_update(),
+                id=account.id,
+                user=request.user
+            )
 
-        account.balance -= amount
-        account.save()
+            if locked_account.balance < amount:
+                messages.error(request, "Insufficient balance ❌")
+                return redirect("withdraw")
 
-        Transaction.objects.create(
-            account=account,
-            transaction_type="WITHDRAW",
-            amount=amount
-        )
+            locked_account.balance -= amount
+            locked_account.save(update_fields=['balance'])
+
+            Transaction.objects.create(
+                account=locked_account,
+                transaction_type="WITHDRAW",
+                amount=amount
+            )
 
         messages.success(request, "Withdrawal successful ✅")
         return redirect("withdraw")
@@ -138,10 +148,8 @@ def transfer_view(request):
         acc_no = request.POST.get('account_number')
         amount = request.POST.get('amount')
 
-        receiver = BankAccount.objects.filter(account_number=acc_no).first()
-
-        if not receiver:
-            messages.error(request, "Invalid account number ❌")
+        if not sender:
+            messages.error(request, "Your account not found ❌")
             return redirect("transfer")
 
         try:
@@ -154,25 +162,49 @@ def transfer_view(request):
             messages.error(request, "Enter valid amount ❌")
             return redirect("transfer")
 
-        if not sender:
-            messages.error(request, "Your account not found ❌")
+        receiver = BankAccount.objects.filter(account_number=acc_no).first()
+
+        if not receiver:
+            messages.error(request, "Invalid account number ❌")
             return redirect("transfer")
 
-        if sender.balance < amount:
-            messages.error(request, "Insufficient balance ❌")
+        if sender.id == receiver.id or sender.account_number == receiver.account_number:
+            messages.error(request, "Cannot transfer to the same account ❌")
             return redirect("transfer")
 
-        sender.balance -= amount
-        receiver.balance += amount
+        with transaction.atomic():
+            # Deadlock prevention: sort account IDs to acquire locks in consistent order
+            ordered_ids = sorted([sender.id, receiver.id])
+            locked_map = {
+                acc.id: acc
+                for acc in BankAccount.objects.select_for_update().filter(id__in=ordered_ids).order_by('id')
+            }
 
-        sender.save()
-        receiver.save()
+            locked_sender = locked_map.get(sender.id)
+            locked_receiver = locked_map.get(receiver.id)
 
-        Transaction.objects.create(
-            account=sender,
-            transaction_type="TRANSFER",
-            amount=amount
-        )
+            if not locked_sender or locked_sender.user_id != request.user.id:
+                raise Http404("Source account not found or access denied.")
+
+            if not locked_receiver:
+                messages.error(request, "Invalid account number ❌")
+                return redirect("transfer")
+
+            if locked_sender.balance < amount:
+                messages.error(request, "Insufficient balance ❌")
+                return redirect("transfer")
+
+            locked_sender.balance -= amount
+            locked_receiver.balance += amount
+
+            locked_sender.save(update_fields=['balance'])
+            locked_receiver.save(update_fields=['balance'])
+
+            Transaction.objects.create(
+                account=locked_sender,
+                transaction_type="TRANSFER",
+                amount=amount
+            )
 
         messages.success(request, "Transfer successful ✅")
         return redirect("transfer")
@@ -207,14 +239,19 @@ def deposit_view(request):
             messages.error(request, "Amount must be greater than 0 ❌")
             return redirect("deposit")
 
-        account.balance += amount
-        account.save()
+        with transaction.atomic():
+            locked_account = get_object_or_404(
+                BankAccount.objects.select_for_update(),
+                id=account.id
+            )
+            locked_account.balance += amount
+            locked_account.save(update_fields=['balance'])
 
-        Transaction.objects.create(
-            account=account,
-            transaction_type="DEPOSIT",
-            amount=amount
-        )
+            Transaction.objects.create(
+                account=locked_account,
+                transaction_type="DEPOSIT",
+                amount=amount
+            )
 
         messages.success(request, "Deposit successful ✅")
         return redirect("deposit")
@@ -355,14 +392,25 @@ def fd_view(request, fd_id=None):
             messages.error(request, "Insufficient balance ❌")
             return redirect("fd")
 
-        account.balance -= amount
-        account.save()
+        with transaction.atomic():
+            locked_account = get_object_or_404(
+                BankAccount.objects.select_for_update(),
+                id=account.id,
+                user=request.user
+            )
 
-        FixedDeposit.objects.create(
-            account=account,
-            amount=amount,
-            duration_months=int(request.POST['months'])
-        )
+            if locked_account.balance < amount:
+                messages.error(request, "Insufficient balance ❌")
+                return redirect("fd")
+
+            locked_account.balance -= amount
+            locked_account.save(update_fields=['balance'])
+
+            FixedDeposit.objects.create(
+                account=locked_account,
+                amount=amount,
+                duration_months=int(request.POST['months'])
+            )
 
         messages.success(request, "FD Booked Successfully 🎉")
         return redirect("fd")
@@ -425,25 +473,32 @@ def loan_view(request, loan_id=None):
 # APPROVE LOAN
 # =========================
 @role_required('ADMIN')
+@require_POST
+@transaction.atomic
 def approve_loan(request, loan_id):
 
-    loan = get_object_or_404(Loan, id=loan_id)
+    # Lock loan row to prevent concurrent duplicate processing
+    loan = get_object_or_404(Loan.objects.select_for_update(), id=loan_id)
 
-    if loan.status == "PENDING":
+    if loan.status != "PENDING":
+        messages.error(request, f"Loan #{loan_id} has already been processed ({loan.status}). ❌")
+        return redirect('/admin-dashboard/')
 
-        account = loan.account
-        account.balance += loan.amount
-        account.save()
+    # Lock account row to guarantee balance integrity
+    account = get_object_or_404(BankAccount.objects.select_for_update(), id=loan.account_id)
+    account.balance += loan.amount
+    account.save(update_fields=['balance'])
 
-        Transaction.objects.create(
-            account=account,
-            transaction_type="LOAN_CREDIT",
-            amount=loan.amount
-        )
+    Transaction.objects.create(
+        account=account,
+        transaction_type="LOAN_CREDIT",
+        amount=loan.amount
+    )
 
-        loan.status = "APPROVED"
-        loan.save()
+    loan.status = "APPROVED"
+    loan.save(update_fields=['status'])
 
+    messages.success(request, f"Loan #{loan_id} approved successfully ✅")
     return redirect('/admin-dashboard/')
 
 
@@ -451,12 +506,20 @@ def approve_loan(request, loan_id):
 # REJECT LOAN
 # =========================
 @role_required('ADMIN')
+@require_POST
+@transaction.atomic
 def reject_loan(request, loan_id):
 
-    loan = get_object_or_404(Loan, id=loan_id)
-    loan.status = "REJECTED"
-    loan.save()
+    loan = get_object_or_404(Loan.objects.select_for_update(), id=loan_id)
 
+    if loan.status != "PENDING":
+        messages.error(request, f"Loan #{loan_id} has already been processed ({loan.status}). ❌")
+        return redirect('/admin-dashboard/')
+
+    loan.status = "REJECTED"
+    loan.save(update_fields=['status'])
+
+    messages.success(request, f"Loan #{loan_id} rejected. 🚫")
     return redirect('/admin-dashboard/')
 
 
