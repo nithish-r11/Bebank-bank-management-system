@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
-from decimal import Decimal
+from django.http import HttpResponse, Http404
+from decimal import Decimal, InvalidOperation
 from django.db.models import Sum
 from django.contrib import messages
 
@@ -10,12 +10,14 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 
 from accounts.models import User
+from accounts.decorators import role_required
 from .models import BankAccount, Transaction, FixedDeposit, Loan
 
 
 # =========================
 # CREATE ACCOUNT
 # =========================
+@role_required('EMPLOYEE', 'ADMIN')
 def create_account_view(request):
 
     if request.method == "POST":
@@ -27,8 +29,8 @@ def create_account_view(request):
 
         email = request.POST.get("email")
         phone = request.POST.get("phone")
-        aadhaar = request.POST.get("aadhaar").replace(" ", "")
-        pan = request.POST.get("pan").replace(" ", "")
+        aadhaar = request.POST.get("aadhaar", "").replace(" ", "")
+        pan = request.POST.get("pan", "").replace(" ", "")
         address = request.POST.get("address")
         pincode = request.POST.get("pincode")
 
@@ -75,15 +77,20 @@ def create_account_view(request):
 # =========================
 # WITHDRAW
 # =========================
+@role_required('CUSTOMER')
 def withdraw_view(request):
 
-    account = BankAccount.objects.filter(user=request.user).last()
+    account_id = request.POST.get('account_id') or request.GET.get('account_id')
+    if account_id:
+        account = get_object_or_404(BankAccount, id=account_id, user=request.user)
+    else:
+        account = BankAccount.objects.filter(user=request.user).last()
 
     if request.method == 'POST':
 
         try:
             amount = Decimal(request.POST['amount'])
-        except:
+        except (KeyError, ValueError, InvalidOperation):
             messages.error(request, "Invalid amount ❌")
             return redirect("withdraw")
 
@@ -117,9 +124,14 @@ def withdraw_view(request):
 # =========================
 # TRANSFER
 # =========================
+@role_required('CUSTOMER')
 def transfer_view(request):
 
-    sender = BankAccount.objects.filter(user=request.user).last()
+    account_id = request.POST.get('account_id') or request.POST.get('source_account_id') or request.GET.get('account_id')
+    if account_id:
+        sender = get_object_or_404(BankAccount, id=account_id, user=request.user)
+    else:
+        sender = BankAccount.objects.filter(user=request.user).last()
 
     if request.method == 'POST':
 
@@ -134,7 +146,7 @@ def transfer_view(request):
 
         try:
             amount = Decimal(amount)
-        except:
+        except (TypeError, ValueError, InvalidOperation):
             messages.error(request, "Invalid amount ❌")
             return redirect("transfer")
 
@@ -171,6 +183,7 @@ def transfer_view(request):
 # =========================
 # DEPOSIT
 # =========================
+@role_required('EMPLOYEE', 'ADMIN')
 def deposit_view(request):
 
     if request.method == "POST":
@@ -186,7 +199,7 @@ def deposit_view(request):
 
         try:
             amount = Decimal(amount)
-        except:
+        except (TypeError, ValueError, InvalidOperation):
             messages.error(request, "Invalid amount ❌")
             return redirect("deposit")
 
@@ -212,10 +225,19 @@ def deposit_view(request):
 # =========================
 # HISTORY
 # =========================
-def history_view(request):
+@role_required('CUSTOMER')
+def history_view(request, account_id=None):
 
-    account = BankAccount.objects.filter(user=request.user).last()
-    txns = Transaction.objects.filter(account=account).order_by('-created_at')
+    account_id = account_id or request.GET.get('account_id') or request.POST.get('account_id')
+    if account_id:
+        account = get_object_or_404(BankAccount, id=account_id, user=request.user)
+    else:
+        account = BankAccount.objects.filter(user=request.user).last()
+
+    if not account:
+        txns = Transaction.objects.none()
+    else:
+        txns = Transaction.objects.filter(account=account, account__user=request.user).order_by('-created_at')
 
     return render(request, 'history.html', {
         'transactions': txns,
@@ -226,10 +248,18 @@ def history_view(request):
 # =========================
 # ⭐ PRO PDF STATEMENT
 # =========================
-def passbook_pdf_view(request):
+@role_required('CUSTOMER')
+def passbook_pdf_view(request, account_id=None):
 
-    account = BankAccount.objects.filter(user=request.user).last()
-    transactions = Transaction.objects.filter(account=account).order_by('-created_at')
+    account_id = account_id or request.GET.get('account_id') or request.POST.get('account_id')
+    if account_id:
+        account = get_object_or_404(BankAccount, id=account_id, user=request.user)
+    else:
+        account = BankAccount.objects.filter(user=request.user).last()
+        if not account:
+            raise Http404("No account found for user.")
+
+    transactions = Transaction.objects.filter(account=account, account__user=request.user).order_by('-created_at')
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="bank_statement.pdf"'
@@ -290,21 +320,35 @@ def passbook_pdf_view(request):
 # =========================
 # FIXED DEPOSIT
 # =========================
-def fd_view(request):
+@role_required('CUSTOMER')
+def fd_view(request, fd_id=None):
+
+    fd_target_id = fd_id or request.GET.get('fd_id') or request.POST.get('fd_id')
+    if fd_target_id:
+        get_object_or_404(FixedDeposit, id=fd_target_id, account__user=request.user)
+
+    account_id = request.POST.get("account_id") or request.GET.get("account_id")
+    if account_id:
+        account = get_object_or_404(BankAccount, id=account_id, user=request.user)
+    else:
+        account = BankAccount.objects.filter(user=request.user).last()
 
     if request.method == 'POST':
 
-        account = BankAccount.objects.filter(user=request.user).last()
         amount = request.POST.get("amount")
 
         try:
             amount = Decimal(amount)
-        except:
+        except (TypeError, ValueError, InvalidOperation):
             messages.error(request, "Invalid amount ❌")
             return redirect("fd")
 
         if amount <= 0:
             messages.error(request, "Amount must be greater than 0 ❌")
+            return redirect("fd")
+
+        if not account:
+            messages.error(request, "Account not found ❌")
             return redirect("fd")
 
         if account.balance < amount:
@@ -329,22 +373,36 @@ def fd_view(request):
 # =========================
 # LOAN APPLY
 # =========================
-def loan_view(request):
+@role_required('CUSTOMER')
+def loan_view(request, loan_id=None):
+
+    loan_target_id = loan_id or request.GET.get('loan_id') or request.POST.get('loan_id')
+    if loan_target_id:
+        get_object_or_404(Loan, id=loan_target_id, account__user=request.user)
+
+    account_id = request.POST.get("account_id") or request.GET.get("account_id")
+    if account_id:
+        account = get_object_or_404(BankAccount, id=account_id, user=request.user)
+    else:
+        account = BankAccount.objects.filter(user=request.user).last()
 
     if request.method == 'POST':
 
-        account = BankAccount.objects.filter(user=request.user).last()
         amount = request.POST.get("amount")
         months = request.POST.get("months")
 
         try:
             amount = Decimal(amount)
-        except:
+        except (TypeError, ValueError, InvalidOperation):
             messages.error(request, "Invalid amount ❌")
             return redirect("loan")
 
         if amount <= 0:
             messages.error(request, "Amount must be greater than 0 ❌")
+            return redirect("loan")
+
+        if not account:
+            messages.error(request, "Account not found ❌")
             return redirect("loan")
 
         if int(months) <= 0:
@@ -366,6 +424,7 @@ def loan_view(request):
 # =========================
 # APPROVE LOAN
 # =========================
+@role_required('ADMIN')
 def approve_loan(request, loan_id):
 
     loan = get_object_or_404(Loan, id=loan_id)
@@ -378,7 +437,7 @@ def approve_loan(request, loan_id):
 
         Transaction.objects.create(
             account=account,
-            transaction_type="LOAN_CREDIT",  # ✅ FIXED
+            transaction_type="LOAN_CREDIT",
             amount=loan.amount
         )
 
@@ -391,6 +450,7 @@ def approve_loan(request, loan_id):
 # =========================
 # REJECT LOAN
 # =========================
+@role_required('ADMIN')
 def reject_loan(request, loan_id):
 
     loan = get_object_or_404(Loan, id=loan_id)
@@ -403,6 +463,7 @@ def reject_loan(request, loan_id):
 # =========================
 # ANALYTICS
 # =========================
+@role_required('EMPLOYEE', 'ADMIN')
 def analytics_view(request):
 
     total_accounts = BankAccount.objects.count()

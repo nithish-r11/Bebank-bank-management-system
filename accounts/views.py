@@ -53,9 +53,13 @@ def login_view(request):
 # CUSTOMER DASHBOARD
 # =========================
 @role_required('CUSTOMER')
-def customer_dashboard(request):
+def customer_dashboard(request, account_id=None):
 
-    account = BankAccount.objects.filter(user=request.user).last()
+    account_id = account_id or request.GET.get('account_id') or request.POST.get('account_id')
+    if account_id:
+        account = get_object_or_404(BankAccount, id=account_id, user=request.user)
+    else:
+        account = BankAccount.objects.filter(user=request.user).last()
 
     return render(request, "customer_dashboard.html", {
         "account": account
