@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db.models import Sum
 
 from .models import User
+from .decorators import role_required
 from banking.models import BankAccount, Transaction, Loan
 
 
@@ -51,6 +52,7 @@ def login_view(request):
 # =========================
 # CUSTOMER DASHBOARD
 # =========================
+@role_required('CUSTOMER')
 def customer_dashboard(request):
 
     account = BankAccount.objects.filter(user=request.user).last()
@@ -63,6 +65,7 @@ def customer_dashboard(request):
 # =========================
 # EMPLOYEE DASHBOARD
 # =========================
+@role_required('EMPLOYEE', 'ADMIN')
 def employee_dashboard(request):
 
     total_accounts = BankAccount.objects.count()
@@ -89,6 +92,7 @@ def employee_dashboard(request):
 # =========================
 # ADMIN DASHBOARD
 # =========================
+@role_required('ADMIN')
 def admin_dashboard(request):
 
     total_customers = User.objects.filter(role='CUSTOMER').count()
@@ -110,6 +114,7 @@ def admin_dashboard(request):
 # =========================
 # BLOCK USER
 # =========================
+@role_required('ADMIN')
 def block_user(request, user_id):
 
     user = get_object_or_404(User, id=user_id)
@@ -124,6 +129,7 @@ def block_user(request, user_id):
 # =========================
 # UNBLOCK USER
 # =========================
+@role_required('ADMIN')
 def unblock_user(request, user_id):
 
     user = get_object_or_404(User, id=user_id)

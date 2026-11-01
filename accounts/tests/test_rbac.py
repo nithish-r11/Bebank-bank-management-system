@@ -3,9 +3,11 @@ from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.contrib.auth.models import AnonymousUser
 from django.contrib import admin
+from django.contrib.messages.storage.fallback import FallbackStorage
 from accounts.models import User
 from banking.models import BankAccount, Transaction, FixedDeposit
 from accounts.decorators import role_required, login_required_with_lock_check
+from accounts.views import block_user, unblock_user
 from core.admin_site import BebankAdminSite
 
 
@@ -271,3 +273,218 @@ class RbacDecoratorTests(TestCase):
         self.client.force_login(self.admin)
         response = self.client.get('/admin/accounts/user/')
         self.assertEqual(response.status_code, 200)
+
+
+class AccountsViewsRbacTests(TestCase):
+    """
+    Integration tests verifying authentication, account-locking checks, and RBAC
+    enforcement on accounts views and dashboards.
+    """
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.client = Client()
+
+        # Users across roles and states
+        self.customer = User.objects.create_user(
+            username='view_cust', password='pwd', role='CUSTOMER', is_staff=False
+        )
+        self.employee = User.objects.create_user(
+            username='view_emp', password='pwd', role='EMPLOYEE', is_staff=False
+        )
+        self.admin = User.objects.create_superuser(
+            username='view_adm', password='pwd', role='ADMIN', is_staff=True
+        )
+        self.locked_user = User.objects.create_user(
+            username='view_locked', password='pwd', role='CUSTOMER', account_locked=True
+        )
+        self.inactive_user = User.objects.create_user(
+            username='view_inactive', password='pwd', role='CUSTOMER', is_active=False
+        )
+        self.locked_admin = User.objects.create_superuser(
+            username='view_locked_adm', password='pwd', role='ADMIN', is_staff=True, account_locked=True
+        )
+        self.inactive_admin = User.objects.create_superuser(
+            username='view_inactive_adm', password='pwd', role='ADMIN', is_staff=True, is_active=False
+        )
+        self.target_user = User.objects.create_user(
+            username='view_target', password='pwd', role='CUSTOMER'
+        )
+
+        # Customer account for dashboard rendering
+        self.account = BankAccount.objects.create(
+            user=self.customer,
+            account_number='ACC_RBAC_1001',
+            account_type='SAVINGS',
+            balance=1000
+        )
+
+    # ---------------------------------------------------------
+    # 1. Unauthenticated (Anonymous) Access to Dashboards
+    # ---------------------------------------------------------
+
+    def test_anonymous_access_to_all_dashboards_redirects_to_login(self):
+        """Ensure unauthenticated access to all 3 dashboards redirects to login with next param."""
+        dashboards = [
+            ('/customer/dashboard/', '/login/?next=/customer/dashboard/'),
+            ('/employee/dashboard/', '/login/?next=/employee/dashboard/'),
+            ('/admin-dashboard/', '/login/?next=/admin-dashboard/'),
+        ]
+        for url, expected_redirect in dashboards:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 302)
+                self.assertIn(expected_redirect, response.url)
+
+    def test_anonymous_customer_dashboard_does_not_crash_orm(self):
+        """Ensure customer dashboard does not crash with SimpleLazyObject TypeError when unauthenticated."""
+        response = self.client.get('/customer/dashboard/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login/', response.url)
+
+    # ---------------------------------------------------------
+    # 2. CUSTOMER Dashboard Access & Boundary Enforcement
+    # ---------------------------------------------------------
+
+    def test_customer_can_access_customer_dashboard(self):
+        """CUSTOMER role can successfully access customer dashboard and view rendered account."""
+        self.client.force_login(self.customer)
+        response = self.client.get('/customer/dashboard/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'ACC_RBAC_1001')
+
+    def test_customer_cannot_access_employee_dashboard(self):
+        """CUSTOMER role is denied access (HTTP 403) from employee dashboard."""
+        self.client.force_login(self.customer)
+        response = self.client.get('/employee/dashboard/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_customer_cannot_access_admin_dashboard(self):
+        """CUSTOMER role is denied access (HTTP 403) from admin dashboard."""
+        self.client.force_login(self.customer)
+        response = self.client.get('/admin-dashboard/')
+        self.assertEqual(response.status_code, 403)
+
+    # ---------------------------------------------------------
+    # 3. EMPLOYEE Dashboard Access & Boundary Enforcement
+    # ---------------------------------------------------------
+
+    def test_employee_can_access_employee_dashboard(self):
+        """EMPLOYEE role can successfully access employee dashboard."""
+        self.client.force_login(self.employee)
+        response = self.client.get('/employee/dashboard/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_employee_cannot_access_customer_dashboard(self):
+        """EMPLOYEE role is denied access (HTTP 403) from customer dashboard."""
+        self.client.force_login(self.employee)
+        response = self.client.get('/customer/dashboard/')
+        self.assertEqual(response.status_code, 403)
+
+    def test_employee_cannot_access_admin_dashboard(self):
+        """EMPLOYEE role is denied access (HTTP 403) from admin dashboard."""
+        self.client.force_login(self.employee)
+        response = self.client.get('/admin-dashboard/')
+        self.assertEqual(response.status_code, 403)
+
+    # ---------------------------------------------------------
+    # 4. ADMIN Dashboard Access & Boundary Enforcement
+    # ---------------------------------------------------------
+
+    def test_admin_can_access_admin_dashboard(self):
+        """ADMIN role can successfully access admin dashboard."""
+        self.client.force_login(self.admin)
+        response = self.client.get('/admin-dashboard/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_can_access_employee_dashboard(self):
+        """ADMIN role can access employee dashboard (shared staff access)."""
+        self.client.force_login(self.admin)
+        response = self.client.get('/employee/dashboard/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_cannot_access_customer_dashboard(self):
+        """ADMIN role is denied access (HTTP 403) from customer dashboard."""
+        self.client.force_login(self.admin)
+        response = self.client.get('/customer/dashboard/')
+        self.assertEqual(response.status_code, 403)
+
+    # ---------------------------------------------------------
+    # 5. Admin User Block / Unblock Actions
+    # ---------------------------------------------------------
+
+    def test_customer_cannot_block_or_unblock_users(self):
+        """CUSTOMER role cannot execute block_user or unblock_user view actions."""
+        req_block = self.factory.get(f'/admin/block/{self.target_user.id}/')
+        req_block.user = self.customer
+        with self.assertRaises(PermissionDenied):
+            block_user(req_block, self.target_user.id)
+
+        req_unblock = self.factory.get(f'/admin/unblock/{self.target_user.id}/')
+        req_unblock.user = self.customer
+        with self.assertRaises(PermissionDenied):
+            unblock_user(req_unblock, self.target_user.id)
+
+    def test_employee_cannot_block_or_unblock_users(self):
+        """EMPLOYEE role cannot execute block_user or unblock_user view actions."""
+        req_block = self.factory.get(f'/admin/block/{self.target_user.id}/')
+        req_block.user = self.employee
+        with self.assertRaises(PermissionDenied):
+            block_user(req_block, self.target_user.id)
+
+        req_unblock = self.factory.get(f'/admin/unblock/{self.target_user.id}/')
+        req_unblock.user = self.employee
+        with self.assertRaises(PermissionDenied):
+            unblock_user(req_unblock, self.target_user.id)
+
+    def test_admin_can_block_and_unblock_users(self):
+        """ADMIN role can execute block_user and unblock_user actions successfully."""
+        # Test blocking
+        req_block = self.factory.get(f'/admin/block/{self.target_user.id}/')
+        req_block.user = self.admin
+        setattr(req_block, 'session', {})
+        setattr(req_block, '_messages', FallbackStorage(req_block))
+
+        resp_block = block_user(req_block, self.target_user.id)
+        self.assertEqual(resp_block.status_code, 302)
+        self.target_user.refresh_from_db()
+        self.assertTrue(self.target_user.account_locked)
+
+        # Test unblocking
+        req_unblock = self.factory.get(f'/admin/unblock/{self.target_user.id}/')
+        req_unblock.user = self.admin
+        setattr(req_unblock, 'session', {})
+        setattr(req_unblock, '_messages', FallbackStorage(req_unblock))
+
+        resp_unblock = unblock_user(req_unblock, self.target_user.id)
+        self.assertEqual(resp_unblock.status_code, 302)
+        self.target_user.refresh_from_db()
+        self.assertFalse(self.target_user.account_locked)
+
+    # ---------------------------------------------------------
+    # 6. Locked and Inactive User Denial
+    # ---------------------------------------------------------
+
+    def test_locked_users_denied_from_dashboards_and_redirected_to_login(self):
+        """Locked accounts cannot access dashboards and are redirected to login."""
+        self.client.force_login(self.locked_user)
+        resp_cust = self.client.get('/customer/dashboard/')
+        self.assertEqual(resp_cust.status_code, 302)
+        self.assertIn('/login/', resp_cust.url)
+
+        self.client.force_login(self.locked_admin)
+        resp_adm = self.client.get('/admin-dashboard/')
+        self.assertEqual(resp_adm.status_code, 302)
+        self.assertIn('/login/', resp_adm.url)
+
+    def test_inactive_users_denied_from_dashboards_and_redirected_to_login(self):
+        """Inactive accounts cannot access dashboards and are redirected to login."""
+        self.client.force_login(self.inactive_user)
+        resp_cust = self.client.get('/customer/dashboard/')
+        self.assertEqual(resp_cust.status_code, 302)
+        self.assertIn('/login/', resp_cust.url)
+
+        self.client.force_login(self.inactive_admin)
+        resp_adm = self.client.get('/admin-dashboard/')
+        self.assertEqual(resp_adm.status_code, 302)
+        self.assertIn('/login/', resp_adm.url)
