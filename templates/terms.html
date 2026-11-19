@@ -1,0 +1,132 @@
+{% extends "base_public.html" %}
+{% load static %}
+
+{% block title %}Terms &amp; Conditions - BEBANK Bank Management System{% endblock %}
+
+{% block extra_head %}
+<style>
+    .terms-plain-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 50px 24px 60px;
+        background-color: #ffffff;
+    }
+
+    .terms-heading {
+        font-family: var(--bebank-font-sans, 'Inter', sans-serif);
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0b1e36;
+        text-align: center;
+        margin-bottom: 8px;
+        letter-spacing: -0.4px;
+    }
+
+    .terms-subheading {
+        font-family: var(--bebank-font-sans, 'Inter', sans-serif);
+        font-size: 0.98rem;
+        font-weight: 500;
+        color: #475569;
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .terms-section-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 45px 0;
+    }
+
+    .terms-section-item {
+        font-size: 0.98rem;
+        line-height: 1.65;
+        color: #1e293b;
+        margin-bottom: 22px;
+    }
+
+    .terms-section-item strong {
+        color: #0b1e36;
+        font-weight: 700;
+    }
+
+    .terms-draft-footer {
+        text-align: center;
+        font-size: 0.92rem;
+        color: #64748b;
+        font-weight: 500;
+        padding-top: 25px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .terms-action-bar {
+        text-align: center;
+        margin-top: 25px;
+    }
+
+    .btn-terms-login {
+        background-color: #0b1e36;
+        color: #ffffff;
+        font-size: 0.92rem;
+        font-weight: 600;
+        padding: 10px 24px;
+        border-radius: 50rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background-color 0.2s ease;
+    }
+    .btn-terms-login:hover, .btn-terms-login:focus {
+        background-color: #112a4a;
+        color: #ffffff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="terms-plain-container">
+
+    <!-- Simple Heading & Subtitle (Matching Right Reference) -->
+    <h1 class="terms-heading">Terms &amp; Conditions</h1>
+    <p class="terms-subheading">Please read the following terms carefully before using Bebank.</p>
+
+    <!-- Numbered Text Sections (Matching Exact Reference Layout & Copy) -->
+    <ol class="terms-section-list">
+        <li class="terms-section-item">
+            <strong>1. Project Purpose:</strong> This is an academic / educational project for learning and demonstration purposes.
+        </li>
+        <li class="terms-section-item">
+            <strong>2. No Real Funds:</strong> It is not a real bank and does not provide any real financial services such as deposits, withdrawals, transfers or loans.
+        </li>
+        <li class="terms-section-item">
+            <strong>3. No UPI or Payment Integrations:</strong> There is no integration with UPI, payment gateways or any real banking networks.
+        </li>
+        <li class="terms-section-item">
+            <strong>4. Mock KYC Only:</strong> Use only fictional or test information. Do NOT enter your genuine Aadhaar, PAN or any other real personal identity details.
+        </li>
+        <li class="terms-section-item">
+            <strong>5. User Responsibilities:</strong> Use the system only for its intended purpose. Do not misuse, tamper with data, or attempt unauthorized access.
+        </li>
+        <li class="terms-section-item">
+            <strong>6. Statements and PDFs:</strong> Account statements and downloadable PDFs are system-generated records for demonstration only and are not legal financial instruments.
+        </li>
+    </ol>
+
+    <!-- Footer Draft Disclaimer (Matching Exact Reference) -->
+    <div class="terms-draft-footer">
+        <p class="mb-0">This is a draft for educational use only.</p>
+    </div>
+
+    <!-- Clean Navigation Return to Portal -->
+    <div class="terms-action-bar">
+        <a href="{% url 'login' %}" class="btn-terms-login">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m12 19-7-7 7-7"/>
+                <path d="M19 12H5"/>
+            </svg>
+            <span>Return to Login</span>
+        </a>
+    </div>
+
+</div>
+{% endblock %}

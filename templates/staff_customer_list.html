@@ -1,0 +1,237 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}Customer Directory &amp; Management — BEBANK{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4" style="max-width: 1320px;">
+
+    <!-- Top Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1" style="color: var(--bebank-navy-primary);">
+                <i class="bi bi-people-fill text-primary me-2"></i>Customer Management &amp; Directory
+            </h3>
+            <p class="text-muted small mb-0">Search, inspect 360° profiles, and maintain customer records across branches.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'create_account' %}" class="btn btn-primary btn-sm px-3 py-2 rounded-pill shadow-sm" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                <i class="bi bi-person-plus me-1"></i> Open New Account
+            </a>
+            <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filter & Search Bar -->
+    <div class="card p-3 p-md-4 mb-4 border-0 shadow-sm bg-white">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-lg-5 col-md-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text"
+                           name="q"
+                           value="{{ q }}"
+                           class="form-control border-start-0"
+                           placeholder="Search by username, name, email, phone, or account number...">
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-sm-6">
+                <select name="kyc" class="form-select">
+                    <option value="">All KYC Statuses</option>
+                    {% for code, label in kyc_choices %}
+                    <option value="{{ code }}" {% if kyc_filter == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-sm-6">
+                <select name="status" class="form-select">
+                    <option value="">All Account Statuses</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+                    <option value="locked" {% if status_filter == 'locked' %}selected{% endif %}>Locked Only</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                    Filter
+                </button>
+                {% if q or kyc_filter or status_filter %}
+                <a href="{% url 'staff_customer_list' %}" class="btn btn-outline-secondary" title="Clear Filters">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Customer Directory Table -->
+    <div class="card border-0 shadow-sm bg-white mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+            <span class="fw-bold text-dark">
+                Registered Customers <span class="badge bg-secondary-subtle text-secondary ms-1">{{ total_count }} found</span>
+            </span>
+            <span class="small text-muted">Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th>Customer</th>
+                        <th>Contact Details</th>
+                        <th>Linked Accounts</th>
+                        <th>Total Balance</th>
+                        <th>KYC Status</th>
+                        <th>Account Status</th>
+                        <th>Registered</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    {% for cust in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                    {{ cust.username|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'staff_customer_detail' cust.id %}" class="fw-bold text-dark text-decoration-none d-block">
+                                        {{ cust.get_full_name|default:cust.username }}
+                                    </a>
+                                    <code class="text-muted small">@{{ cust.username }}</code>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div><i class="bi bi-envelope text-muted me-1"></i>{{ cust.email|default:"-" }}</div>
+                            <div class="font-mono text-muted"><i class="bi bi-telephone text-muted me-1"></i>{{ cust.phone|default:"-" }}</div>
+                        </td>
+                        <td>
+                            {% if cust.primary_account %}
+                            <div class="font-mono fw-semibold text-dark">{{ cust.primary_account.account_number }}</div>
+                            <span class="badge bg-light text-secondary border">
+                                {{ cust.accounts_list|length }} account{% if cust.accounts_list|length != 1 %}s{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="text-muted italic">No account opened</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="font-mono fw-bold text-success">
+                                ₹{{ cust.total_balance|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if cust.kyc_status == 'APPROVED' or cust.kyc_verified %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="bi bi-patch-check-fill me-1"></i> Verified
+                            </span>
+                            {% elif cust.kyc_status == 'PENDING' %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                <i class="bi bi-clock me-1"></i> Pending
+                            </span>
+                            {% elif cust.kyc_status == 'UNDER_REVIEW' %}
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1">
+                                <i class="bi bi-eye me-1"></i> Review
+                            </span>
+                            {% elif cust.kyc_status == 'REJECTED' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                <i class="bi bi-x-circle me-1"></i> Rejected
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">
+                                Not Submitted
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if cust.account_locked %}
+                            <span class="badge bg-danger text-white">Locked</span>
+                            {% elif not cust.is_active %}
+                            <span class="badge bg-secondary text-white">Inactive</span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success">Active</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted font-mono">
+                            {{ cust.date_joined|date:"d M Y" }}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'staff_customer_detail' cust.id %}" class="btn btn-outline-primary" title="View 360° Profile">
+                                    <i class="bi bi-person-lines-fill me-1"></i> 360° View
+                                </a>
+                                <a href="{% url 'staff_customer_profile_edit' cust.id %}" class="btn btn-outline-secondary" title="Edit Profile Details">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-search fs-2 d-block mb-2 opacity-50"></i>
+                            No customer records found matching your search criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="small text-muted">
+                Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ total_count }}
+            </div>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&kyc={{ kyc_filter }}&status={{ status_filter }}">&laquo; Previous</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+                {% endif %}
+
+                {% for p in page_obj.paginator.page_range %}
+                    {% if p == page_obj.number %}
+                    <li class="page-item active"><span class="page-link" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">{{ p }}</span></li>
+                    {% elif p >= page_obj.number|add:"-2" and p <= page_obj.number|add:"2" %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ p }}&q={{ q }}&kyc={{ kyc_filter }}&status={{ status_filter }}">{{ p }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&kyc={{ kyc_filter }}&status={{ status_filter }}">Next &raquo;</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

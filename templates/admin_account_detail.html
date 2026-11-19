@@ -1,0 +1,410 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Account Governance #••••{{ account.account_number|slice:"-4:" }} — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Top Navigation Breadcrumb & Actions -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_account_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Account Directory
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Account Surveillance
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Account #••••{{ account.account_number|slice:"-4:" }}
+            </h3>
+            <p class="text-muted small mb-0 font-mono">Full A/C {{ account.account_number }} &bull; {{ account.get_account_type_display|default:account.account_type }} &bull; Opened {{ account.created_at|date:"M d, Y" }}</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+            <a href="{% url 'admin_customer_detail' account.user.id %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-person me-1"></i> Customer 360&deg; View
+            </a>
+
+            <!-- Freeze / Unfreeze Action Button -->
+            {% if account.is_frozen %}
+            <button type="button" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#toggleFreezeModal">
+                <i class="bi bi-sun me-1"></i> Unfreeze Account
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#toggleFreezeModal">
+                <i class="bi bi-snow me-1"></i> Freeze Account
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Django Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top Snapshot Row -->
+    <div class="row g-3 mb-4">
+        <!-- Balance & Ledger Integrity Card -->
+        <div class="col-12 col-md-4">
+            <div class="card p-4 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Ledger Balance</span>
+                    <i class="bi bi-wallet2 text-success fs-4"></i>
+                </div>
+                <h2 class="fw-bold text-dark font-mono mb-2">₹{{ account.balance|floatformat:2 }}</h2>
+                <div class="small text-muted" style="font-size: 0.74rem;">
+                    <i class="bi bi-shield-check text-success me-1"></i>
+                    Double-entry ledger integrity strictly enforced. Direct balance edits are prohibited by banking security policies.
+                </div>
+            </div>
+        </div>
+
+        <!-- Freeze & Governance State Card -->
+        <div class="col-12 col-md-4">
+            <div class="card p-4 h-100 border shadow-sm rounded-4 {% if account.is_frozen %}border-danger bg-danger-subtle{% endif %}">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Account Status</span>
+                    {% if account.is_frozen %}
+                        <i class="bi bi-snow text-danger fs-4"></i>
+                    {% else %}
+                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                    {% endif %}
+                </div>
+
+                {% if account.is_frozen %}
+                    <div class="mb-2">
+                        <span class="badge bg-danger text-white rounded-pill px-3 py-1 fw-bold fs-6">
+                            <i class="bi bi-snow me-1"></i> FROZEN (DEBIT LOCK)
+                        </span>
+                    </div>
+                    <div class="small text-danger mb-1">
+                        <strong>Frozen At:</strong> {{ account.frozen_at|date:"Y-m-d H:i" }}
+                    </div>
+                    <div class="small text-danger mb-1">
+                        <strong>Frozen By:</strong> {{ account.frozen_by.username|default:"Administrator" }}
+                    </div>
+                    <div class="small text-danger bg-white p-2 rounded-2 border border-danger-subtle mt-2">
+                        <strong>Reason:</strong> {{ account.freeze_reason|default:"No reason specified" }}
+                    </div>
+                {% else %}
+                    <div class="mb-2">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 fw-bold fs-6">
+                            <i class="bi bi-check2-circle me-1"></i> ACTIVE (OPERATIONAL)
+                        </span>
+                    </div>
+                    <div class="small text-muted">
+                        All debit and credit banking channels are operational.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Account Holder Information -->
+        <div class="col-12 col-md-4">
+            <div class="card p-4 h-100 border shadow-sm rounded-4">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-semibold text-uppercase">Primary Holder</span>
+                    <i class="bi bi-person-badge text-primary fs-4"></i>
+                </div>
+                <h5 class="fw-bold mb-1 text-dark">
+                    <a href="{% url 'admin_customer_detail' account.user.id %}" class="text-decoration-none text-dark">
+                        {{ account.user.get_full_name|default:account.user.username }}
+                    </a>
+                </h5>
+                <span class="font-mono text-muted small d-block mb-2">@{{ account.user.username }} &bull; Customer #{{ account.user.id }}</span>
+                <div class="border-top pt-2 small">
+                    <div class="text-muted">Email: <span class="text-dark">{{ account.user.email|default:"Not recorded" }}</span></div>
+                    <div class="text-muted">Phone: <span class="font-mono text-dark">{{ account.user.phone|default:"Not recorded" }}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debit Freeze Semantics Alert Banner -->
+    <div class="alert {% if account.is_frozen %}alert-danger{% else %}alert-info{% endif %} border rounded-4 p-3 mb-4 shadow-sm">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+            <div>
+                <h6 class="fw-bold mb-1">Account Freeze Policy &amp; Fund Movement Rules</h6>
+                <p class="small mb-0">
+                    When an account is <strong>FROZEN</strong>, all outgoing debits (transfers, teller cash withdrawals, virtual card spending/issuance, fixed deposit creation, loan repayments) are strictly blocked to protect assets. Incoming credits (teller cash deposits, peer inbound transfers, fixed deposit maturity payouts, loan disbursements) remain permitted to maintain accounting integrity and allow settlement.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ledger & Financial Products Tabs -->
+    <div class="card border shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white border-bottom pt-3 pb-0">
+            <ul class="nav nav-tabs card-header-tabs" id="accountTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-semibold text-dark" id="ledger-tab" data-bs-toggle="tab" data-bs-target="#tab-ledger" type="button" role="tab">
+                        <i class="bi bi-receipt me-1"></i> Account Ledger ({{ transactions|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold text-dark" id="card-tab" data-bs-toggle="tab" data-bs-target="#tab-cards" type="button" role="tab">
+                        <i class="bi bi-credit-card me-1"></i> Linked Cards ({{ cards|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold text-dark" id="fds-tab" data-bs-toggle="tab" data-bs-target="#tab-fds" type="button" role="tab">
+                        <i class="bi bi-piggy-bank me-1"></i> Fixed Deposits ({{ fixed_deposits|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold text-dark" id="loans-tab" data-bs-toggle="tab" data-bs-target="#tab-loans" type="button" role="tab">
+                        <i class="bi bi-cash-stack me-1"></i> Loans ({{ loans|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold text-dark" id="audit-tab" data-bs-toggle="tab" data-bs-target="#tab-audit" type="button" role="tab">
+                        <i class="bi bi-clock-history me-1"></i> Audit Trail ({{ activity_logs|length }})
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="tab-content" id="accountTabContent">
+                <!-- Tab 1: Ledger Transactions -->
+                <div class="tab-pane fade show active" id="tab-ledger" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="text-muted small">
+                                    <th>Date &amp; Time</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Balance Before &rarr; After</th>
+                                    <th>Reference ID</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tx in transactions %}
+                                <tr>
+                                    <td class="font-mono small text-muted">{{ tx.created_at|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        <span class="badge {% if 'DEBIT' in tx.transaction_type or tx.transaction_type == 'WITHDRAW' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-success-subtle text-success border border-success-subtle{% endif %} rounded-pill small">
+                                            {{ tx.transaction_type }}
+                                        </span>
+                                    </td>
+                                    <td class="font-mono fw-bold {% if 'DEBIT' in tx.transaction_type or tx.transaction_type == 'WITHDRAW' %}text-danger{% else %}text-success{% endif %}">
+                                        {% if 'DEBIT' in tx.transaction_type or tx.transaction_type == 'WITHDRAW' %}-{% else %}+{% endif %}₹{{ tx.amount|floatformat:2 }}
+                                    </td>
+                                    <td class="font-mono small text-muted">
+                                        ₹{{ tx.balance_before|floatformat:2 }} &rarr; ₹{{ tx.balance_after|floatformat:2 }}
+                                    </td>
+                                    <td class="font-mono small text-muted">{{ tx.reference_id|default:"—" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted small">No transactions recorded on this account.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Linked Cards -->
+                <div class="tab-pane fade" id="tab-cards" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="text-muted small">
+                                    <th>Masked Card #</th>
+                                    <th>Cardholder</th>
+                                    <th>Expiry</th>
+                                    <th>Daily Limit</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for card in cards %}
+                                <tr>
+                                    <td class="font-mono fw-bold text-dark">•••• •••• •••• {{ card.card_number|slice:"-4:" }}</td>
+                                    <td>{{ card.cardholder_name }}</td>
+                                    <td class="font-mono">{{ card.expiry_month|stringformat:"02d" }}/{{ card.expiry_year|stringformat:"02d" }}</td>
+                                    <td class="font-mono">₹{{ card.daily_limit|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge {% if card.status == 'ACTIVE' %}bg-success-subtle text-success border border-success-subtle{% elif card.status == 'BLOCKED' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-secondary-subtle text-muted{% endif %} rounded-pill">
+                                            {{ card.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted small">No debit cards tied to this account.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Fixed Deposits -->
+                <div class="tab-pane fade" id="tab-fds" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="text-muted small">
+                                    <th>FD ID</th>
+                                    <th>Principal</th>
+                                    <th>Rate</th>
+                                    <th>Maturity Amount</th>
+                                    <th>Maturity Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fd in fixed_deposits %}
+                                <tr>
+                                    <td class="font-mono fw-bold">#{{ fd.id }}</td>
+                                    <td class="font-mono fw-bold text-dark">₹{{ fd.amount|floatformat:2 }}</td>
+                                    <td class="font-mono">{{ fd.interest_rate }}%</td>
+                                    <td class="font-mono fw-bold text-success">₹{{ fd.maturity_amount|floatformat:2 }}</td>
+                                    <td class="font-mono small">{{ fd.maturity_date|date:"Y-m-d" }}</td>
+                                    <td>
+                                        <span class="badge {% if fd.status == 'ACTIVE' %}bg-success-subtle text-success border border-success-subtle{% else %}bg-secondary-subtle text-muted{% endif %} rounded-pill">
+                                            {{ fd.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted small">No fixed deposits funded from this account.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Loans -->
+                <div class="tab-pane fade" id="tab-loans" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="text-muted small">
+                                    <th>Loan ID</th>
+                                    <th>Principal Amount</th>
+                                    <th>Tenure</th>
+                                    <th>Monthly EMI</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for loan in loans %}
+                                <tr>
+                                    <td class="font-mono fw-bold">#{{ loan.id }}</td>
+                                    <td class="font-mono fw-bold text-dark">₹{{ loan.amount|floatformat:2 }}</td>
+                                    <td>{{ loan.duration_months }} mos</td>
+                                    <td class="font-mono text-muted">₹{{ loan.emi_amount|floatformat:2 }}</td>
+                                    <td>
+                                        <span class="badge {% if loan.status == 'APPROVED' %}bg-success-subtle text-success border border-success-subtle{% elif loan.status == 'REJECTED' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% endif %} rounded-pill">
+                                            {{ loan.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted small">No loans disbursed to this account.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 5: Audit Trail -->
+                <div class="tab-pane fade" id="tab-audit" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="text-muted small">
+                                    <th>Timestamp</th>
+                                    <th>Staff Member</th>
+                                    <th>Action</th>
+                                    <th>Description</th>
+                                    <th>IP Address</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in activity_logs %}
+                                <tr>
+                                    <td class="font-mono small text-muted">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                                    <td class="fw-semibold small">{{ log.employee.username|default:"System" }}</td>
+                                    <td><span class="badge bg-light text-dark border font-mono small">{{ log.action_type }}</span></td>
+                                    <td class="small text-muted">{{ log.description }}</td>
+                                    <td class="font-mono small text-muted">{{ log.ip_address|default:"127.0.0.1" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted small">No administrative audit records for this account.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL: TOGGLE FREEZE STATUS -->
+<div class="modal fade" id="toggleFreezeModal" tabindex="-1" aria-labelledby="toggleFreezeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form method="POST" action="{% url 'admin_account_toggle_freeze' account.id %}">
+                {% csrf_token %}
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold" id="toggleFreezeModalLabel">
+                        {% if account.is_frozen %}
+                            <i class="bi bi-sun text-success me-2"></i>Unfreeze Bank Account
+                        {% else %}
+                            <i class="bi bi-snow text-danger me-2"></i>Freeze Bank Account
+                        {% endif %}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        {% if account.is_frozen %}
+                            Unfreezing account <strong>#••••{{ account.account_number|slice:"-4:" }}</strong> will restore normal operational status and re-enable outgoing debits (transfers, withdrawals, card transactions).
+                        {% else %}
+                            Freezing account <strong>#••••{{ account.account_number|slice:"-4:" }}</strong> will immediately block all outgoing debits (transfers, counter withdrawals, card usage). Incoming credits will remain enabled.
+                        {% endif %}
+                    </p>
+                    <div class="mb-3">
+                        <label for="freezeReasonInput" class="form-label small fw-bold text-dark">
+                            Mandatory Justification / Reason <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="freezeReasonInput" name="reason" rows="3" required placeholder="Specify compliance, risk mitigation, or legal order justification for this action..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn {% if account.is_frozen %}btn-success{% else %}btn-danger{% endif %} rounded-pill px-4">
+                        Confirm {% if account.is_frozen %}Unfreeze{% else %}Freeze{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

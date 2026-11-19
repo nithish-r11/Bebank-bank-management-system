@@ -1,0 +1,253 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Ledger Integrity & Reconciliation Diagnostics — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Header & Action Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Integrity Assurance
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Ledger Integrity &amp; Reconciliation Diagnostics
+            </h3>
+            <p class="text-muted small mb-0">Automated diagnostic surveillance verifying two-leg transfer symmetry, balance snapshot continuity &amp; counter settlements.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+            <a href="{% url 'admin_transaction_list' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-receipt me-1"></i> Transaction Directory
+            </a>
+            <a href="{% url 'admin_risk_monitoring' %}" class="btn btn-outline-warning text-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-shield-exclamation me-1"></i> Risk Monitoring
+            </a>
+            <a href="{% url 'admin_reconciliation_export_csv' %}?category={{ selected_category }}&date_from={{ date_from }}&date_to={{ date_to }}" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Diagnostic CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Strict Read-Only Disclaimer Alert -->
+    <div class="alert alert-info border-info-subtle rounded-4 p-3 mb-4 shadow-sm">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-info-circle-fill fs-5 mt-1 text-primary"></i>
+            <div>
+                <h6 class="fw-bold mb-1 text-dark">Read-Only Diagnostic Scope &amp; Ledger Continuity Policy</h6>
+                <p class="small mb-0 text-muted">
+                    This workspace executes strictly read-only mathematical verification across core ledger records. It does not alter balances or modify historical transactions. Legacy records with optional <code>NULL</code> balance snapshots are explicitly recognized and classified separately from actual double-entry anomalies.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Metrics Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Total Scanned -->
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border-0 shadow-sm rounded-4" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                <span class="text-muted small fw-semibold text-uppercase">Scanned Transactions</span>
+                <h3 class="fw-bold text-dark font-mono my-1">{{ stats.total_scanned }}</h3>
+                <span class="text-muted small" style="font-size: 0.74rem;">Bounded inspection scope</span>
+            </div>
+        </div>
+
+        <!-- Transfer Symmetry -->
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border-0 shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase">Symmetric Transfers</span>
+                <h3 class="fw-bold text-success font-mono my-1">{{ stats.paired_transfers_count }} <span class="fs-6 fw-normal text-muted">/ {{ stats.total_transfers }}</span></h3>
+                <span class="text-success small" style="font-size: 0.74rem;">
+                    {% if stats.asymmetric_transfers_count == 0 %}
+                        100% Balanced two-leg postings
+                    {% else %}
+                        {{ stats.asymmetric_transfers_count }} asymmetric transfers detected
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Snapshot Verified -->
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border-0 shadow-sm rounded-4" style="background: linear-gradient(135deg, #fefce8 0%, #fef08a 100%);">
+                <span class="text-muted small fw-semibold text-uppercase">Snapshots Verified</span>
+                <h3 class="fw-bold text-dark font-mono my-1">{{ stats.snapshot_verified_count }}</h3>
+                <span class="text-muted small" style="font-size: 0.74rem;">
+                    {{ stats.legacy_null_count }} legacy records (N/A snapshots)
+                </span>
+            </div>
+        </div>
+
+        <!-- Flagged Issues -->
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border-0 shadow-sm rounded-4" style="background: {% if stats.total_issues_count > 0 %}linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%){% else %}linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%){% endif %};">
+                <span class="text-muted small fw-semibold text-uppercase">Flagged Discrepancies</span>
+                <h3 class="fw-bold {% if stats.total_issues_count > 0 %}text-danger{% else %}text-success{% endif %} font-mono my-1">{{ stats.total_issues_count }}</h3>
+                <span class="small {% if stats.critical_count > 0 %}text-danger fw-bold{% else %}text-muted{% endif %}" style="font-size: 0.74rem;">
+                    {{ stats.critical_count }} Critical &bull; {{ stats.high_count }} High
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card p-3 p-md-4 mb-4 border shadow-sm rounded-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <!-- Issue Category Filter -->
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-muted">Issue Category</label>
+                <select name="category" class="form-select bg-light">
+                    <option value="" {% if not selected_category %}selected{% endif %}>All Diagnostic Categories</option>
+                    <option value="ASYMMETRIC_TRANSFER" {% if selected_category == 'ASYMMETRIC_TRANSFER' %}selected{% endif %}>Asymmetric Transfer (Missing Leg)</option>
+                    <option value="DUPLICATE_TRANSFER_LEG" {% if selected_category == 'DUPLICATE_TRANSFER_LEG' %}selected{% endif %}>Duplicate Transfer Leg</option>
+                    <option value="TRANSFER_AMOUNT_MISMATCH" {% if selected_category == 'TRANSFER_AMOUNT_MISMATCH' %}selected{% endif %}>Transfer Leg Amount Mismatch</option>
+                    <option value="TRANSFER_CROSS_LINK_MISMATCH" {% if selected_category == 'TRANSFER_CROSS_LINK_MISMATCH' %}selected{% endif %}>Cross-Link Pointer Mismatch</option>
+                    <option value="SNAPSHOT_CREDIT_MISMATCH" {% if selected_category == 'SNAPSHOT_CREDIT_MISMATCH' %}selected{% endif %}>Snapshot Credit Mismatch</option>
+                    <option value="SNAPSHOT_DEBIT_MISMATCH" {% if selected_category == 'SNAPSHOT_DEBIT_MISMATCH' %}selected{% endif %}>Snapshot Debit Mismatch</option>
+                    <option value="TELLER_LOG_UNPOSTED_LEDGER" {% if selected_category == 'TELLER_LOG_UNPOSTED_LEDGER' %}selected{% endif %}>Unposted Teller Success Record</option>
+                    <option value="INVALID_AMOUNT" {% if selected_category == 'INVALID_AMOUNT' %}selected{% endif %}>Invalid Non-Positive Amount</option>
+                </select>
+            </div>
+
+            <!-- Date From -->
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Date From</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control bg-light">
+            </div>
+
+            <!-- Date To -->
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Date To</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control bg-light">
+            </div>
+
+            <!-- Action -->
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 rounded-3">
+                    Run Scan
+                </button>
+                {% if selected_category or date_from or date_to %}
+                <a href="{% url 'admin_reconciliation' %}" class="btn btn-outline-secondary rounded-3" title="Clear Filters">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Diagnostic Findings Table -->
+    <div class="card border shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-muted small text-uppercase">
+                        <th class="ps-3">Issue Category</th>
+                        <th>Severity</th>
+                        <th>Reference ID</th>
+                        <th>Affected Account</th>
+                        <th>Detection Timestamp</th>
+                        <th>Diagnostic Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in page_obj %}
+                    <tr>
+                        <td class="ps-3 font-mono fw-bold text-dark small">
+                            {{ issue.category }}
+                        </td>
+                        <td>
+                            {% if issue.severity == 'CRITICAL' %}
+                                <span class="badge bg-danger text-white rounded-pill small">CRITICAL</span>
+                            {% elif issue.severity == 'HIGH' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small">HIGH</span>
+                            {% elif issue.severity == 'MEDIUM' %}
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill small">MEDIUM</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-muted rounded-pill small">INFO</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if issue.transaction_id %}
+                                <a href="{% url 'admin_transaction_detail' issue.transaction_id %}" class="font-mono fw-bold text-dark text-decoration-none">
+                                    {{ issue.reference_id }}
+                                </a>
+                            {% else %}
+                                <span class="font-mono text-dark">{{ issue.reference_id }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="font-mono text-muted small">#{{ issue.masked_account_number }}</span>
+                        </td>
+                        <td class="font-mono small text-muted">
+                            {{ issue.detected_at|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td class="small text-muted" style="max-width: 400px;">
+                            {{ issue.description }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-check-circle-fill text-success fs-1 d-block mb-2"></i>
+                            <h6 class="fw-bold text-dark mb-1">Clean Ledger Integrity</h6>
+                            <p class="small mb-0">No ledger anomalies or reconciliation discrepancies were detected in the inspected scope.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="p-3 border-top d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} findings
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&category={{ selected_category }}&date_from={{ date_from }}&date_to={{ date_to }}">&laquo;</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}&category={{ selected_category }}&date_from={{ date_from }}&date_to={{ date_to }}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&category={{ selected_category }}&date_from={{ date_from }}&date_to={{ date_to }}">&raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

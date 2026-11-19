@@ -1,0 +1,375 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Fixed Deposit #FD-{{ fd.id }} Governance — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Top Navigation Breadcrumb & Actions -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_fd_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> FD Portfolio
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Term Deposit Oversight
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Fixed Deposit #FD-{{ fd.id }}
+            </h3>
+            <p class="text-muted small mb-0 font-mono">
+                Account #••••{{ fd.account.account_number|slice:"-4:" }} &bull; Customer: {{ fd.account.user.get_full_name|default:fd.account.user.username }} (@{{ fd.account.user.username }}) &bull; Booked {{ fd.start_date|date:"M d, Y" }}
+            </p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+            <a href="{% url 'admin_customer_detail' fd.account.user.id %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-person me-1"></i> Customer 360&deg;
+            </a>
+            <a href="{% url 'admin_account_detail' fd.account.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-wallet2 me-1"></i> Account Governance
+            </a>
+        </div>
+    </div>
+
+    <!-- Django Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top Snapshot Row -->
+    <div class="row g-3 mb-4">
+        <!-- Principal Card -->
+        <div class="col-6 col-lg-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Contract Principal</span>
+                <h3 class="fw-bold font-mono text-success mb-0">₹{{ fd.amount|floatformat:2 }}</h3>
+                <span class="text-success small fw-medium" style="font-size: 0.72rem;">Locked deposit balance</span>
+            </div>
+        </div>
+
+        <!-- Interest Rate & Duration -->
+        <div class="col-6 col-lg-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4 bg-light">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Interest Rate / Term</span>
+                <h3 class="fw-bold font-mono text-dark mb-0">{{ fd.interest_rate }}% <span class="fs-6 fw-normal text-muted">p.a.</span></h3>
+                <span class="text-muted small" style="font-size: 0.72rem;">Tenure: {{ fd.duration_months }} Month{{ fd.duration_months|pluralize }}</span>
+            </div>
+        </div>
+
+        <!-- Maturity Value -->
+        <div class="col-6 col-lg-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Contract Maturity Amount</span>
+                <h3 class="fw-bold font-mono text-primary mb-0">₹{{ fd.maturity_amount|floatformat:2 }}</h3>
+                <span class="text-primary small fw-medium" style="font-size: 0.72rem;">Yield: +₹{{ fd.interest_earned|floatformat:2 }} interest</span>
+            </div>
+        </div>
+
+        <!-- Deposit Status -->
+        <div class="col-6 col-lg-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4 bg-light">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Current Lifecycle Status</span>
+                <div>
+                    {% if fd.status == 'ACTIVE' %}
+                        {% if is_matured %}
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill font-mono fs-6 fw-bold">MATURITY REACHED</span>
+                        {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill font-mono fs-6 fw-bold">ACTIVE &bull; RUNNING</span>
+                        {% endif %}
+                    {% elif fd.status == 'MATURED' %}
+                        <span class="badge bg-primary text-white px-3 py-2 rounded-pill font-mono fs-6 fw-bold">MATURED &amp; SETTLED</span>
+                    {% elif fd.status == 'CLOSED' %}
+                        <span class="badge bg-secondary text-white px-3 py-2 rounded-pill font-mono fs-6 fw-bold">PREMATURELY CLOSED</span>
+                    {% else %}
+                        <span class="badge bg-dark text-white px-3 py-2 rounded-pill font-mono fs-6 fw-bold">{{ fd.status }}</span>
+                    {% endif %}
+                </div>
+                <span class="text-muted small mt-1 d-block" style="font-size: 0.72rem;">
+                    Maturity: {{ fd.maturity_date|date:"M d, Y" }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GOVERNANCE & LIFECYCLE CONTROLS -->
+    <div class="row g-4 mb-4">
+        <!-- Deposit Specifications Card -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                    <i class="bi bi-file-earmark-text text-primary me-2"></i>Contract Specifications
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted small py-2" style="width: 40%;">Deposit Reference</td>
+                                <td class="font-mono fw-bold py-2">#FD-{{ fd.id }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small py-2">Account Number</td>
+                                <td class="font-mono py-2">
+                                    <a href="{% url 'admin_account_detail' fd.account.id %}" class="text-decoration-none">
+                                        {{ fd.account.account_number }}
+                                    </a>
+                                    {% if fd.account.is_frozen %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2 rounded-pill small">FROZEN</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small py-2">Account Holder</td>
+                                <td class="py-2">
+                                    <a href="{% url 'admin_customer_detail' fd.account.user.id %}" class="fw-semibold text-decoration-none">
+                                        {{ fd.account.user.get_full_name|default:fd.account.user.username }}
+                                    </a>
+                                    <span class="text-muted small font-mono">(@{{ fd.account.user.username }})</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small py-2">Booking Timestamp</td>
+                                <td class="font-mono py-2">{{ fd.start_date|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small py-2">Contract Maturity Date</td>
+                                <td class="font-mono py-2">{{ fd.maturity_date|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small py-2">Current Linked Balance</td>
+                                <td class="font-mono fw-bold py-2">₹{{ fd.account.balance|floatformat:2 }}</td>
+                            </tr>
+                            {% if fd.settled_at %}
+                            <tr>
+                                <td class="text-muted small py-2">Settlement Timestamp</td>
+                                <td class="font-mono text-primary fw-bold py-2">{{ fd.settled_at|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small py-2">Settlement Payout</td>
+                                <td class="font-mono fw-bold text-success py-2">₹{{ fd.settlement_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted small py-2">Closure Type</td>
+                                <td class="py-2">
+                                    <span class="badge {% if fd.closure_type == 'MATURITY' %}bg-success{% else %}bg-secondary{% endif %} rounded-pill font-mono">
+                                        {{ fd.get_closure_type_display|default:fd.closure_type }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if fd.closure_reason %}
+                            <tr>
+                                <td class="text-muted small py-2">Settlement / Closure Note</td>
+                                <td class="small py-2 fst-italic text-muted">{{ fd.closure_reason }}</td>
+                            </tr>
+                            {% endif %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if fd.account.is_frozen %}
+                <div class="alert alert-info border-0 rounded-3 mt-3 mb-0 small">
+                    <i class="bi bi-info-circle-fill me-1 text-primary"></i>
+                    <strong>Frozen Account Notice:</strong> The linked bank account is currently frozen. In accordance with banking regulations, incoming credit settlements (maturity payout or premature refund) will be deposited successfully.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Admin Decision & Lifecycle Operations Card -->
+        <div class="col-12 col-lg-6">
+            {% if fd.status == 'ACTIVE' %}
+            <div class="card p-4 border border-primary-subtle shadow-sm rounded-4 h-100" style="background: #fafcff;">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-0">
+                            <i class="bi bi-shield-check text-primary me-2"></i>Admin Lifecycle Governance
+                        </h5>
+                        <span class="text-muted small">Execute maturity settlement or process authorized premature liquidation.</span>
+                    </div>
+                    <span class="badge bg-primary text-white rounded-pill px-3 py-1 font-mono">ADMIN DESK</span>
+                </div>
+
+                <!-- Action 1: Maturity Settlement -->
+                <div class="p-3 border rounded-3 bg-white mb-3 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="fw-bold text-primary mb-0">
+                            <i class="bi bi-cash-coin me-1"></i> Maturity Settlement
+                        </h6>
+                        {% if is_matured %}
+                        <span class="badge bg-success text-white rounded-pill small">Maturity Date Passed</span>
+                        {% else %}
+                        <span class="badge bg-warning-subtle text-dark rounded-pill small">Pre-Maturity Date</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted small mb-3">
+                        Credits contract payout of <strong>₹{{ fd.maturity_amount|floatformat:2 }}</strong> (Principal ₹{{ fd.amount|floatformat:2 }} + Interest ₹{{ fd.interest_earned|floatformat:2 }}) directly into account <code>#••••{{ fd.account.account_number|slice:"-4:" }}</code>. Records transaction <code>FD_MATURITY_CREDIT</code>.
+                    </p>
+                    <form method="POST" action="{% url 'admin_fd_settle' fd.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted">Settlement Remarks (Optional)</label>
+                            <input type="text" name="notes" class="form-control form-control-sm" placeholder="Settled upon term maturity under administrative oversight.">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 py-2 rounded-pill fw-semibold shadow-sm" onclick="return confirm('Confirm maturity settlement payout of ₹{{ fd.maturity_amount }} to this account?');">
+                            <i class="bi bi-check2-circle me-1"></i> Process Maturity Settlement
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Action 2: Premature Closure -->
+                <div class="p-3 border rounded-3 bg-white shadow-sm">
+                    <h6 class="fw-bold text-danger mb-1">
+                        <i class="bi bi-clock-history me-1"></i> Premature Liquidation / Closure
+                    </h6>
+                    <p class="text-muted small mb-3">
+                        Refunds <strong>100% principal (₹{{ fd.amount|floatformat:2 }})</strong>. All accrued interest is forfeited with zero financial penalty. Payout is deposited to account <code>#••••{{ fd.account.account_number|slice:"-4:" }}</code>. Mandatory justification required.
+                    </p>
+                    <form method="POST" action="{% url 'admin_fd_close' fd.id %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted">Mandatory Closure Reason <span class="text-danger">*</span></label>
+                            <textarea name="reason" class="form-control form-control-sm" rows="2" placeholder="e.g., Customer emergency withdrawal request, court order, regulatory compliance..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger w-100 py-2 rounded-pill fw-semibold" onclick="return confirm('Are you sure you want to execute premature liquidation for FD #{{ fd.id }}? All interest will be forfeited.');">
+                            <i class="bi bi-x-octagon me-1"></i> Liquidate &amp; Close Prematurely
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <!-- Closed / Settled Overview -->
+            <div class="card p-4 border shadow-sm rounded-4 h-100 bg-light">
+                <div class="text-center py-4">
+                    <div class="rounded-circle d-inline-flex p-3 mb-3 {% if fd.status == 'MATURED' %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                        <i class="bi {% if fd.status == 'MATURED' %}bi-check-circle-fill{% else %}bi-archive-fill{% endif %} fs-1"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">
+                        Deposit {{ fd.get_status_display|default:fd.status }}
+                    </h5>
+                    <p class="text-muted small mb-3" style="max-width: 380px; margin: 0 auto;">
+                        This term deposit has been finalized. Payout of <strong>₹{{ fd.settlement_amount|floatformat:2 }}</strong> was credited on {{ fd.settled_at|date:"M d, Y H:i" }}.
+                    </p>
+                    {% if fd.closure_reason %}
+                    <div class="card p-3 border text-start bg-white rounded-3 shadow-sm mx-auto" style="max-width: 420px;">
+                        <span class="text-muted small fw-semibold d-block mb-1">Audit Record / Reason:</span>
+                        <span class="small font-mono text-dark">"{{ fd.closure_reason }}"</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ASSOCIATED LEDGER TRANSACTIONS -->
+    <div class="card p-4 border shadow-sm rounded-4 mb-4">
+        <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+            <i class="bi bi-journal-text text-primary me-2"></i>Associated Ledger Transactions
+        </h5>
+        {% if transactions %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th>Tx ID</th>
+                        <th>Reference</th>
+                        <th>Type</th>
+                        <th>Timestamp</th>
+                        <th>Amount</th>
+                        <th>Balance Before</th>
+                        <th>Balance After</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td class="font-mono small">#TX-{{ tx.id }}</td>
+                        <td class="font-mono small fw-semibold">{{ tx.reference_id|default:"-" }}</td>
+                        <td>
+                            <span class="badge {% if 'CREDIT' in tx.transaction_type %}bg-success{% else %}bg-dark{% endif %} rounded-pill font-mono small">
+                                {{ tx.transaction_type }}
+                            </span>
+                        </td>
+                        <td class="font-mono small">{{ tx.timestamp|date:"Y-m-d H:i" }}</td>
+                        <td class="font-mono fw-bold {% if 'CREDIT' in tx.transaction_type %}text-success{% else %}text-danger{% endif %}">
+                            {% if 'CREDIT' in tx.transaction_type %}+{% else %}-{% endif %}₹{{ tx.amount|floatformat:2 }}
+                        </td>
+                        <td class="font-mono small text-muted">₹{{ tx.balance_before|floatformat:2 }}</td>
+                        <td class="font-mono small fw-bold">₹{{ tx.balance_after|floatformat:2 }}</td>
+                        <td>
+                            <a href="{% url 'admin_transaction_detail' tx.id %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2 py-0" style="font-size: 0.75rem;">
+                                Inspect <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted small">
+            <i class="bi bi-receipt mb-1 fs-3 d-block text-secondary"></i>
+            No associated ledger transactions found for this fixed deposit.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- AUDIT TRAIL LOGS -->
+    <div class="card p-4 border shadow-sm rounded-4">
+        <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+            <i class="bi bi-shield-lock text-primary me-2"></i>Administrative Audit Trail
+        </h5>
+        {% if audit_logs %}
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Description / Justification</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td class="font-mono small text-muted">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            <span class="badge bg-dark-subtle text-dark font-mono small">
+                                @{{ log.employee.username|default:"System" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-mono small">
+                                {{ log.get_action_type_display|default:log.action_type }}
+                            </span>
+                        </td>
+                        <td class="small">{{ log.description|default:"-" }}</td>
+                        <td class="font-mono small text-muted">{{ log.ip_address|default:"127.0.0.1" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-3 text-muted small">
+            <i class="bi bi-clock-history mb-1 fs-4 d-block text-secondary"></i>
+            No previous administrative audit logs recorded for this fixed deposit.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

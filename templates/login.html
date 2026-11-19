@@ -1,81 +1,534 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fintech Bank Login</title>
+{% extends "base_public.html" %}
+{% load static %}
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+{% block title %}User Login - BEBANK Bank Management System{% endblock %}
 
+{% block extra_head %}
 <style>
+    /* Full-viewport Navy Architectural Background */
+    .login-viewport {
+        min-height: calc(100vh - 140px);
+        background: linear-gradient(135deg, rgba(7, 19, 38, 0.96) 0%, rgba(10, 25, 47, 0.88) 50%, rgba(8, 26, 54, 0.82) 100%),
+                    url("{% static 'images/bank_architecture_bg.jpg' %}") center right / cover no-repeat;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 50px 16px;
+    }
 
-body{
-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-background:linear-gradient(135deg,#667eea,#764ba2);
-font-family:Segoe UI;
-}
+    /* Soft ambient vignette overlay for visual calm */
+    .login-viewport::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 35% 50%, rgba(7, 19, 38, 0.5) 0%, rgba(5, 16, 36, 0.85) 100%);
+        pointer-events: none;
+    }
 
-/* Card */
-.login-card{
-width:100%;
-max-width:380px;
-background:white;
-padding:30px;
-border-radius:20px;
-box-shadow:0 15px 40px rgba(0,0,0,.2);
-}
+    /* Content Layout Container */
+    .login-stage-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 36px;
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        max-width: 920px;
+    }
 
-/* Title */
-.title{
-text-align:center;
-font-weight:600;
-margin-bottom:20px;
-}
+    @media (min-width: 992px) {
+        .login-stage-container {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 48px;
+        }
+    }
 
-/* Button */
-.btn-login{
-border-radius:12px;
-font-weight:600;
-}
+    /* ========================================================
+       1. DECORATIVE BEBANK CARD (Refined Premium Navy & Gold)
+       ======================================================== */
+    .card-presentation-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
 
+    .decorative-bank-card {
+        width: 360px;
+        height: 220px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #0a2142 0%, #0d2e59 50%, #071933 100%);
+        color: #ffffff;
+        padding: 24px 26px;
+        position: relative;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 25px rgba(56, 189, 248, 0.22);
+        border: 1px solid rgba(96, 165, 250, 0.3);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        user-select: none;
+    }
+
+    /* Subtle wave overlay inside card */
+    .card-inner-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        pointer-events: none;
+        opacity: 0.25;
+    }
+
+    .card-top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+    }
+
+    .card-brand-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-brand-img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+    }
+
+    .card-brand-name {
+        font-family: var(--bebank-font-sans, 'Inter', sans-serif);
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        color: #ffffff;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .contactless-wave {
+        color: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+    }
+
+    /* Gold EMV Chip */
+    .gold-emv-chip {
+        width: 44px;
+        height: 32px;
+        background: linear-gradient(135deg, #d97706 0%, #fef08a 50%, #b45309 100%);
+        border-radius: 6px;
+        box-shadow: inset 0 0 3px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 2;
+        margin: 8px 0;
+    }
+    .gold-emv-chip::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: rgba(0,0,0,0.3);
+    }
+    .gold-emv-chip::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        background: rgba(0,0,0,0.3);
+    }
+
+    /* Centered Fictional Display Card Number */
+    .card-number-display {
+        font-family: var(--bebank-font-mono, 'Consolas', 'SF Mono', 'Courier New', monospace);
+        font-variant-numeric: tabular-nums;
+        font-size: 1.3rem;
+        letter-spacing: 2.5px;
+        color: #ffffff;
+        font-weight: 600;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+        position: relative;
+        z-index: 2;
+        margin: 8px 0 6px 0;
+        text-align: center;
+    }
+
+    /* Card Bottom Info */
+    .card-bottom-row {
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-end;
+        position: relative;
+        z-index: 2;
+    }
+
+    .cardholder-name {
+        font-family: var(--bebank-font-sans, 'Inter', sans-serif);
+        font-size: 0.88rem;
+        font-weight: 600;
+        letter-spacing: 1.2px;
+        color: #f8fafc;
+        text-transform: uppercase;
+        margin: 0;
+    }
+
+    /* Card Reflection Base */
+    .card-shadow-reflection {
+        width: 320px;
+        height: 14px;
+        background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.28) 0%, rgba(0,0,0,0) 70%);
+        margin-top: 10px;
+        border-radius: 50%;
+    }
+
+    /* ========================================================
+       2. WHITE ROUNDED LOGIN PANEL (Matching Reference)
+       ======================================================== */
+    .login-panel {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+        width: 100%;
+        max-width: 420px;
+        padding: 38px 34px;
+        position: relative;
+        z-index: 10;
+    }
+
+    .login-panel-title {
+        font-family: var(--bebank-font-sans, 'Inter', sans-serif);
+        font-size: 1.7rem;
+        font-weight: 700;
+        color: #0b1e36;
+        margin-bottom: 26px;
+        text-align: center;
+        letter-spacing: -0.3px;
+    }
+
+    .form-label-custom {
+        font-family: var(--bebank-font-sans, 'Inter', sans-serif);
+        font-size: 0.86rem;
+        font-weight: 500;
+        color: #1e293b;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .form-label-custom svg {
+        color: #1e3a8a;
+        flex-shrink: 0;
+    }
+
+    .form-control-pill, .form-select-pill {
+        font-family: var(--bebank-font-sans, 'Inter', sans-serif);
+        font-size: 0.94rem;
+        font-weight: 400;
+        border-radius: 10px;
+        border: 1.5px solid #e2e8f0;
+        padding: 10px 14px;
+        color: #0f172a;
+        background-color: #f8fafc;
+        transition: all 0.2s ease;
+    }
+    .form-select-pill {
+        background-image: none !important;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+    .form-control-pill:focus, .form-select-pill:focus {
+        border-color: #1d4ed8;
+        background-color: #ffffff;
+        box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+        outline: none;
+    }
+
+    .select-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    .select-chevron-icon {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .password-wrapper {
+        position: relative;
+    }
+    .password-toggle-btn {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 4px 6px;
+        display: flex;
+        align-items: center;
+        z-index: 5;
+    }
+    .password-toggle-btn:hover {
+        color: #0b1e36;
+    }
+    .password-toggle-btn:focus-visible {
+        outline: 2px solid #1d4ed8;
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+    .password-toggle-btn svg {
+        pointer-events: none;
+    }
+
+    .btn-login-navy {
+        background-color: #0b1e36;
+        color: #ffffff;
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(11, 30, 54, 0.25);
+    }
+    .btn-login-navy:hover, .btn-login-navy:focus {
+        background-color: #112a4a;
+        color: #ffffff;
+        box-shadow: 0 6px 16px rgba(11, 30, 54, 0.35);
+    }
+    .btn-login-navy svg {
+        pointer-events: none;
+    }
+
+    .terms-bottom-link {
+        color: #1e3a8a;
+        font-size: 0.88rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: color 0.2s ease;
+    }
+    .terms-bottom-link:hover, .terms-bottom-link:focus {
+        color: #2563eb;
+        text-decoration: underline;
+    }
 </style>
-</head>
+{% endblock %}
 
-<body>
+{% block content %}
+<div class="login-viewport">
 
-<div class="login-card">
+    <!-- Main Stage: Decorative Card (Left) and Login Panel (Right) -->
+    <div class="container d-flex justify-content-center">
+        <div class="login-stage-container">
 
-<h4 class="title">🏦 BEBANK</h4>
+            <!-- 1. Decorative BEBANK Card (Matching exact user specifications) -->
+            <div class="card-presentation-wrapper d-none d-lg-flex">
+                <div class="decorative-bank-card">
+                    <!-- Subtle Wave Lines Overlay -->
+                    <div class="card-inner-overlay" aria-hidden="true">
+                        <svg viewBox="0 0 360 220" width="100%" height="100%" fill="none" stroke="#60a5fa" stroke-width="1.5">
+                            <path d="M-20,120 C80,60 220,190 380,100" />
+                            <path d="M-20,150 C100,90 240,210 380,130" />
+                        </svg>
+                    </div>
 
-{% if messages %}
-{% for message in messages %}
-<div class="alert alert-danger">{{ message }}</div>
-{% endfor %}
-{% endif %}
+                    <!-- Top Row: Brand Logo (Transparent SVG) & Contactless Symbol -->
+                    <div class="card-top-row">
+                        <div class="card-brand-logo">
+                            <img src="{% static 'images/bebank_b_monogram.svg' %}" alt="BEBANK Logo" class="card-brand-img">
+                            <span class="card-brand-name">BEBANK</span>
+                        </div>
+                        <div class="contactless-wave" title="Contactless Symbol" aria-label="Contactless Symbol">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M8.5 16.5a5 5 0 0 1 0-9"></path>
+                                <path d="M12 19a8.5 8.5 0 0 0 0-14"></path>
+                                <path d="M15.5 21.5a12 12 0 0 0 0-19"></path>
+                            </svg>
+                        </div>
+                    </div>
 
-<form method="post">
-{% csrf_token %}
+                    <!-- Middle: Gold EMV Smart Chip -->
+                    <div class="gold-emv-chip" aria-hidden="true"></div>
 
-<input type="text" name="username" class="form-control mb-3" placeholder="Username" required>
+                    <!-- Card Number: Fictional Display Number -->
+                    <div class="card-number-display" aria-label="Card Number">
+                        1107 3006 0710 1007
+                    </div>
 
-<input type="password" name="password" class="form-control mb-3" placeholder="Password" required>
+                    <!-- Bottom Row: Cardholder Name Only -->
+                    <div class="card-bottom-row">
+                        <div>
+                            <p class="cardholder-name">NITHISH KUMAR R</p>
+                        </div>
+                    </div>
+                </div>
 
-<select name="role" class="form-control mb-3" required>
-<option value="">Select Role</option>
-<option value="CUSTOMER">Customer</option>
-<option value="EMPLOYEE">Employee</option>
-<option value="ADMIN">Admin</option>
-</select>
+                <!-- Reflection effect beneath the card -->
+                <div class="card-shadow-reflection" aria-hidden="true"></div>
+            </div>
 
-<button class="btn btn-primary w-100 btn-login">
-Login
-</button>
+            <!-- 2. White Rounded Login Panel -->
+            <div class="login-panel">
+                <h2 class="login-panel-title">User Login</h2>
 
-</form>
+                <!-- Server Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Login Form -->
+                <form method="POST" action="{% url 'login' %}" novalidate>
+                    {% csrf_token %}
+
+                    <!-- Username -->
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label-custom">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-user-round" aria-hidden="true">
+                                <circle cx="12" cy="8" r="5"/>
+                                <path d="M20 21a8 8 0 0 0-16 0"/>
+                            </svg>
+                            <span>Username</span>
+                        </label>
+                        <input type="text" id="id_username" name="username" class="form-control form-control-pill" placeholder="Enter username" required autocomplete="username">
+                    </div>
+
+                    <!-- Password with Eye Toggle -->
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label-custom">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-lock" aria-hidden="true">
+                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                            </svg>
+                            <span>Password</span>
+                        </label>
+                        <div class="password-wrapper">
+                            <input type="password" id="id_password" name="password" class="form-control form-control-pill pe-5" placeholder="Enter password" required autocomplete="current-password">
+                            <button type="button" id="togglePassword" class="password-toggle-btn" aria-label="Show password" aria-pressed="false" aria-controls="id_password">
+                                <span id="togglePasswordIcon" class="d-inline-flex align-items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-eye" aria-hidden="true">
+                                        <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Role Dropdown -->
+                    <div class="mb-4">
+                        <label for="id_role" class="form-label-custom">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-users-round" aria-hidden="true">
+                                <path d="M18 21a8 8 0 0 0-16 0"/>
+                                <circle cx="10" cy="8" r="5"/>
+                                <path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/>
+                            </svg>
+                            <span>Role</span>
+                        </label>
+                        <div class="select-wrapper">
+                            <select id="id_role" name="role" class="form-select form-select-pill pe-5" required>
+                                <option value="" disabled selected>Select role</option>
+                                <option value="CUSTOMER">Customer</option>
+                                <option value="EMPLOYEE">Employee</option>
+                                <option value="ADMIN">Admin</option>
+                            </select>
+                            <div class="select-chevron-icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-chevron-down">
+                                    <path d="m6 9 6 6 6-6"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-login-navy">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-arrow-right" aria-hidden="true">
+                            <path d="M5 12h14"/>
+                            <path d="m12 5 7 7-7 7"/>
+                        </svg>
+                        <span>Login</span>
+                    </button>
+                </form>
+
+                <!-- Terms & Conditions Link -->
+                <div class="text-center mt-3 pt-2">
+                    <a href="{% url 'terms' %}" class="terms-bottom-link">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-file-text" aria-hidden="true">
+                            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                            <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                            <path d="M10 9H8"/>
+                            <path d="M16 13H8"/>
+                            <path d="M16 17H8"/>
+                        </svg>
+                        <span>Terms &amp; Conditions</span>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
 
 </div>
+{% endblock %}
 
-</body>
-</html>
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleBtn = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('id_password');
+        const toggleIconWrapper = document.getElementById('togglePasswordIcon');
+
+        const eyeSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-eye" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>';
+        const eyeOffSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="form-icon-eye-off" aria-hidden="true"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499A10.75 10.75 0 0 1 2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 2.82-4.28"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
+
+        if (toggleBtn && passwordInput && toggleIconWrapper) {
+            toggleBtn.addEventListener('click', function () {
+                const isPassword = passwordInput.getAttribute('type') === 'password';
+                passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+                toggleIconWrapper.innerHTML = isPassword ? eyeOffSvg : eyeSvg;
+                toggleBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+                toggleBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,29 +1,470 @@
 {% extends 'base_employee.html' %}
 
+{% block title %}Reports &amp; Analytics — BEBANK Staff Portal{% endblock %}
+
 {% block content %}
+<div class="container-fluid px-2 px-md-4" style="max-width: 1320px;">
 
-<h2>📊 Analytics</h2>
+    <!-- Top Header & Filter Controls -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: var(--bebank-navy-primary);">
+                <i class="bi bi-graph-up-arrow text-primary me-2"></i>Financial Reports &amp; Branch Analytics
+            </h2>
+            <p class="text-muted small mb-0">
+                Database-backed operational reports covering counter cash flows, account acquisitions, product pipelines, and staff performance.
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <a href="{% url 'staff_reports_export_csv' %}?report_type={{ report_type }}&date_from={{ date_from }}&date_to={{ date_to }}{% if selected_emp_id %}&employee_id={{ selected_emp_id }}{% endif %}"
+               class="btn btn-outline-success btn-sm rounded-pill px-3 py-2 fw-semibold shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Report (CSV)
+            </a>
+            <a href="{% url 'staff_activity_log' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-2 fw-semibold shadow-sm">
+                <i class="bi bi-clock-history me-1"></i> Audit Logs
+            </a>
+        </div>
+    </div>
 
-<div style="display:flex;gap:20px;">
-    <div>Total Accounts: {{ accounts }}</div>
-    <div>Total Balance:₹{{ balance }}</div>
-    <div>Total Loans: {{ loans }}</div>
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-4 shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filter Bar Card -->
+    <div class="card p-3 p-md-4 mb-4 border-0 shadow-sm bg-white rounded-4">
+        <form method="GET" action="{% url 'staff_reports' %}" class="row g-3 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-secondary">Report Category</label>
+                <select name="report_type" class="form-select form-select-sm">
+                    <option value="overview" {% if report_type == 'overview' %}selected{% endif %}>Executive Overview</option>
+                    <option value="transactions" {% if report_type == 'transactions' %}selected{% endif %}>Counter Cash &amp; Transactions</option>
+                    <option value="loans" {% if report_type == 'loans' %}selected{% endif %}>Loan Underwriting Pipeline</option>
+                    <option value="fixed_deposits" {% if report_type == 'fixed_deposits' %}selected{% endif %}>Fixed Deposit Portfolio</option>
+                    <option value="cards" {% if report_type == 'cards' %}selected{% endif %}>Debit Cards Portfolio</option>
+                    <option value="support" {% if report_type == 'support' %}selected{% endif %}>Customer Support Volume</option>
+                    <option value="performance" {% if report_type == 'performance' %}selected{% endif %}>Staff Operations Performance</option>
+                </select>
+            </div>
+
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-secondary">Date From</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control form-control-sm">
+            </div>
+
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-secondary">Date To</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm">
+            </div>
+
+            {% if is_admin %}
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-secondary">Filter Staff Member</label>
+                <select name="employee_id" class="form-select form-select-sm">
+                    <option value="">-- All Staff Members --</option>
+                    {% for staff in staff_members %}
+                    <option value="{{ staff.id }}" {% if selected_emp_id == staff.id|stringformat:"s" %}selected{% endif %}>
+                        {{ staff.username }} ({{ staff.role }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100 fw-semibold" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                    <i class="bi bi-filter me-1"></i> Apply
+                </button>
+                <a href="{% url 'staff_reports' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Reset Filters">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Executive KPI Metric Tiles -->
+    <div class="row g-3 mb-4">
+        <!-- Deposits in period -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #0a192f, #1e3a8a); color: white; border-radius: 16px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Period Deposits</span>
+                    <i class="bi bi-arrow-down-circle-fill fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">₹{{ deposit_volume|floatformat:2 }}</div>
+                <span class="small opacity-75 mt-1 d-block">{{ deposit_count }} counter deposit transactions</span>
+            </div>
+        </div>
+
+        <!-- Withdrawals in period -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #be123c, #9f1239); color: white; border-radius: 16px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Period Withdrawals</span>
+                    <i class="bi bi-arrow-up-circle-fill fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">₹{{ withdrawal_volume|floatformat:2 }}</div>
+                <span class="small opacity-75 mt-1 d-block">{{ withdrawal_count }} counter withdrawal debits</span>
+            </div>
+        </div>
+
+        <!-- Net Cash Flow -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, {% if net_cash_flow >= 0 %}#065f46, #047857{% else %}#b45309, #92400e{% endif %}); color: white; border-radius: 16px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Net Branch Flow</span>
+                    <i class="bi bi-wallet2 fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">₹{{ net_cash_flow|floatformat:2 }}</div>
+                <span class="small opacity-75 mt-1 d-block">Counter net liquidity</span>
+            </div>
+        </div>
+
+        <!-- Total Customer Deposits Ledger -->
+        <div class="col-xl-3 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border-radius: 16px;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Active Ledger Balance</span>
+                    <i class="bi bi-bank fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">₹{{ balance|floatformat:2 }}</div>
+                <span class="small opacity-75 mt-1 d-block">{{ accounts }} total accounts ({{ new_accounts_count }} new)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Type Tabs -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a href="?report_type=overview&date_from={{ date_from }}&date_to={{ date_to }}"
+           class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if report_type == 'overview' %}btn-dark{% else %}btn-outline-secondary bg-white{% endif %}">
+            <i class="bi bi-grid me-1"></i> Overview
+        </a>
+        <a href="?report_type=transactions&date_from={{ date_from }}&date_to={{ date_to }}"
+           class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if report_type == 'transactions' %}btn-dark{% else %}btn-outline-secondary bg-white{% endif %}">
+            <i class="bi bi-arrow-left-right me-1"></i> Cash Flow &amp; Transactions
+        </a>
+        <a href="?report_type=loans&date_from={{ date_from }}&date_to={{ date_to }}"
+           class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if report_type == 'loans' %}btn-dark{% else %}btn-outline-secondary bg-white{% endif %}">
+            <i class="bi bi-cash-stack me-1"></i> Loan Pipeline
+        </a>
+        <a href="?report_type=fixed_deposits&date_from={{ date_from }}&date_to={{ date_to }}"
+           class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if report_type == 'fixed_deposits' %}btn-dark{% else %}btn-outline-secondary bg-white{% endif %}">
+            <i class="bi bi-piggy-bank me-1"></i> Fixed Deposits
+        </a>
+        <a href="?report_type=cards&date_from={{ date_from }}&date_to={{ date_to }}"
+           class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if report_type == 'cards' %}btn-dark{% else %}btn-outline-secondary bg-white{% endif %}">
+            <i class="bi bi-credit-card me-1"></i> Debit Cards
+        </a>
+        <a href="?report_type=support&date_from={{ date_from }}&date_to={{ date_to }}"
+           class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if report_type == 'support' %}btn-dark{% else %}btn-outline-secondary bg-white{% endif %}">
+            <i class="bi bi-headset me-1"></i> Customer Support
+        </a>
+        <a href="?report_type=performance&date_from={{ date_from }}&date_to={{ date_to }}"
+           class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if report_type == 'performance' %}btn-dark{% else %}btn-outline-secondary bg-white{% endif %}">
+            <i class="bi bi-person-workspace me-1"></i> Staff Performance
+        </a>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- TAB CONTENT SECTIONS -->
+    <!-- ================================================================= -->
+
+    {% if report_type == 'transactions' %}
+    <!-- 1. Daily Transactions Breakdown -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-calendar-date text-primary me-2"></i>Daily Counter Cash Transactions ({{ date_from }} to {{ date_to }})
+        </h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="py-3">Date</th>
+                        <th class="py-3 text-end">Deposits (INR)</th>
+                        <th class="py-3 text-center">Deposits Count</th>
+                        <th class="py-3 text-end">Withdrawals (INR)</th>
+                        <th class="py-3 text-center">Withdrawals Count</th>
+                        <th class="py-3 text-end">Net Daily Flow (INR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in daily_tx_list %}
+                    <tr>
+                        <td class="font-mono fw-semibold text-dark">{{ row.date|date:"Y-m-d (D)" }}</td>
+                        <td class="text-end font-mono text-success fw-bold">₹{{ row.deposit|floatformat:2 }}</td>
+                        <td class="text-center font-mono">{{ row.deposit_count }}</td>
+                        <td class="text-end font-mono text-danger fw-bold">₹{{ row.withdraw|floatformat:2 }}</td>
+                        <td class="text-center font-mono">{{ row.withdraw_count }}</td>
+                        <td class="text-end font-mono fw-bold {% if row.net >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ₹{{ row.net|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">No teller counter transactions recorded in the selected period.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% elif report_type == 'loans' %}
+    <!-- 2. Loan Underwriting Pipeline -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-cash-coin text-primary me-2"></i>Loan Application Pipeline ({{ date_from }} to {{ date_to }})
+        </h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="py-3">Application Status</th>
+                        <th class="py-3 text-center">Application Count</th>
+                        <th class="py-3 text-end">Total Requested/Disbursed Principal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in loan_pipeline %}
+                    <tr>
+                        <td>
+                            {% if item.status == 'PENDING' %}
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Pending Underwriting</span>
+                            {% elif item.status == 'UNDER_REVIEW' %}
+                            <span class="badge bg-info text-dark px-3 py-2 rounded-pill">Under Review</span>
+                            {% elif item.status == 'APPROVED' %}
+                            <span class="badge bg-success px-3 py-2 rounded-pill">Approved &amp; Disbursed</span>
+                            {% elif item.status == 'REJECTED' %}
+                            <span class="badge bg-danger px-3 py-2 rounded-pill">Rejected</span>
+                            {% else %}
+                            <span class="badge bg-secondary px-3 py-2 rounded-pill">{{ item.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center font-mono fw-bold">{{ item.count }}</td>
+                        <td class="text-end font-mono fw-bold text-dark">₹{{ item.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center py-4 text-muted">No loan pipeline data found for this period.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% elif report_type == 'fixed_deposits' %}
+    <!-- 3. Fixed Deposit Summary -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 h-100">
+                <h6 class="fw-bold text-muted text-uppercase small">Active Contracts</h6>
+                <div class="h3 fw-bold text-success font-mono">{{ fd_summary.active_count }}</div>
+                <div class="small text-muted mt-2">Active Principal: <strong class="text-dark">₹{{ fd_summary.active_principal|floatformat:2 }}</strong></div>
+                <div class="small text-muted">Maturity Liability: <strong class="text-dark">₹{{ fd_summary.active_maturity_liability|floatformat:2 }}</strong></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 h-100">
+                <h6 class="fw-bold text-muted text-uppercase small">Settled / Closed</h6>
+                <div class="h3 fw-bold text-secondary font-mono">{{ fd_summary.closed_count|add:fd_summary.matured_count }}</div>
+                <div class="small text-muted mt-2">Matured Settled: <strong class="text-dark">{{ fd_summary.matured_count }}</strong></div>
+                <div class="small text-muted">Premature Closed: <strong class="text-dark">{{ fd_summary.closed_count }}</strong></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 h-100">
+                <h6 class="fw-bold text-muted text-uppercase small">Upcoming Maturing (Next 30 Days)</h6>
+                <div class="h3 fw-bold text-warning font-mono">{{ fd_summary.upcoming_maturities_30d }}</div>
+                <div class="small text-muted mt-2">Requires automated or counter settlement surveillance.</div>
+            </div>
+        </div>
+    </div>
+
+    {% elif report_type == 'cards' %}
+    <!-- 4. Debit Cards Summary -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">Total Issued</h6>
+                <div class="h3 fw-bold text-dark font-mono">{{ cards_summary.total }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">Active Cards</h6>
+                <div class="h3 fw-bold text-success font-mono">{{ cards_summary.active }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">Suspended / Blocked</h6>
+                <div class="h3 fw-bold text-danger font-mono">{{ cards_summary.blocked }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">Cancelled / Expired</h6>
+                <div class="h3 fw-bold text-secondary font-mono">{{ cards_summary.cancelled|add:cards_summary.expired }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% elif report_type == 'support' %}
+    <!-- 5. Support Volume Summary -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">New Tickets in Period</h6>
+                <div class="h3 fw-bold text-primary font-mono">{{ support_summary.total_in_period }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">Resolved in Period</h6>
+                <div class="h3 fw-bold text-success font-mono">{{ support_summary.resolved_in_period }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">Current Queue (Open + WIP)</h6>
+                <div class="h3 fw-bold text-warning font-mono">{{ support_summary.open_now|add:support_summary.in_progress_now }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 text-center">
+                <h6 class="fw-bold text-muted text-uppercase small">Resolution Ratio</h6>
+                <div class="h3 fw-bold text-info font-mono">{{ support_summary.resolution_rate }}%</div>
+            </div>
+        </div>
+    </div>
+
+    {% elif report_type == 'performance' %}
+    <!-- 6. Staff Performance Table -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-person-check text-primary me-2"></i>Staff Operational Metrics ({{ date_from }} to {{ date_to }})
+        </h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="py-3">Staff Officer</th>
+                        <th class="py-3">Role</th>
+                        <th class="py-3 text-center">Teller Operations</th>
+                        <th class="py-3 text-end">Teller Volume (INR)</th>
+                        <th class="py-3 text-center">KYC Reviews</th>
+                        <th class="py-3 text-center">Loan Underwritings</th>
+                        <th class="py-3 text-center">Tickets Resolved</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in staff_performance %}
+                    <tr>
+                        <td>
+                            <strong>{{ row.user.username }}</strong>
+                            <div class="text-muted small">{{ row.user.get_full_name|default:"" }}</div>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ row.user.role }}</span></td>
+                        <td class="text-center font-mono">{{ row.teller_ops_count }}</td>
+                        <td class="text-end font-mono text-dark fw-bold">₹{{ row.teller_volume|floatformat:2 }}</td>
+                        <td class="text-center font-mono">{{ row.kyc_reviews }}</td>
+                        <td class="text-center font-mono">{{ row.loan_verifications }}</td>
+                        <td class="text-center font-mono">{{ row.tickets_resolved }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">No staff activity data recorded for this selection.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- 0. Default Overview -->
+    <div class="row g-4 mb-4">
+        <!-- Product Portfolio Snapshot -->
+        <div class="col-lg-7">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 h-100">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-pie-chart-fill text-primary me-2"></i>Product Portfolio Snapshot
+                </h5>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="text-muted small">Active Fixed Deposits</div>
+                            <div class="h4 fw-bold text-dark font-mono mb-0">{{ fd_summary.active_count }}</div>
+                            <div class="small text-muted mt-1">₹{{ fd_summary.active_principal|floatformat:2 }} locked</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="text-muted small">Active Debit Cards</div>
+                            <div class="h4 fw-bold text-dark font-mono mb-0">{{ cards_summary.active }}</div>
+                            <div class="small text-muted mt-1">{{ cards_summary.blocked }} cards blocked</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="text-muted small">Total Loans on Book</div>
+                            <div class="h4 fw-bold text-dark font-mono mb-0">{{ loans }}</div>
+                            <div class="small text-muted mt-1">Disbursed active credit</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <div class="text-muted small">Support Resolution Rate</div>
+                            <div class="h4 fw-bold text-success font-mono mb-0">{{ support_summary.resolution_rate }}%</div>
+                            <div class="small text-muted mt-1">{{ support_summary.resolved_in_period }} resolved in period</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Volume Breakdown -->
+        <div class="col-lg-5">
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 h-100">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-receipt text-primary me-2"></i>Transaction Breakdown
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Type</th>
+                                <th class="text-center">Count</th>
+                                <th class="text-end">Volume (INR)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in tx_type_breakdown %}
+                            <tr>
+                                <td><span class="badge bg-light text-dark border">{{ tx.transaction_type }}</span></td>
+                                <td class="text-center font-mono">{{ tx.tx_count }}</td>
+                                <td class="text-end font-mono fw-bold">₹{{ tx.total_amount|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3 text-muted">No transactions in selected period.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
 </div>
-
-<canvas id="chart"></canvas>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-new Chart(document.getElementById("chart"), {
-    type: 'bar',
-    data: {
-        labels: ['Accounts', 'Loans', 'Balance'],
-        datasets: [{
-            label: 'Data',
-            data: [{{ accounts }}, {{ loans }}, {{ balance }}]
-        }]
-    }
-});
-</script>
-
 {% endblock %}

@@ -1,0 +1,112 @@
+{% extends "base_employee.html" %}
+
+{% block title %}In-Branch Cash Withdrawal — BEBANK Staff Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3" style="max-width: 680px; margin: 0 auto;">
+
+    <!-- Back & Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'staff_operations' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-2">
+                <i class="bi bi-arrow-left me-1"></i> Account Operations
+            </a>
+            <h3 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-box-arrow-up text-danger me-2"></i>In-Branch Cash Withdrawal
+            </h3>
+            <p class="text-muted small mb-0">Authorized counter debit with overdraft verification &amp; instant receipt.</p>
+        </div>
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill">
+            Teller Counter
+        </span>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Withdrawal Form Card -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <form method="POST" id="staff-withdraw-form">
+            {% csrf_token %}
+            <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-dark">Customer Account Number</label>
+                <input type="text"
+                       name="account_number"
+                       value="{{ account.account_number|default:account_number }}"
+                       class="form-control form-control-lg font-mono"
+                       placeholder="e.g. 10001"
+                       required>
+                <div class="form-text">Enter the customer's active account number.</div>
+            </div>
+
+            {% if account %}
+            <div class="p-3 bg-light rounded-3 mb-3 border">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold text-dark">{{ account.user.get_full_name|default:account.user.username }}</div>
+                        <div class="text-muted small">Account Type: <span class="badge bg-secondary-subtle text-dark">{{ account.account_type }}</span></div>
+                    </div>
+                    <div class="text-end">
+                        <div class="small text-muted">Available Balance</div>
+                        <div class="h5 fw-bold text-success mb-0 font-mono">₹{{ account.balance|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-dark">Withdrawal Amount (₹)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white">₹</span>
+                    <input type="number"
+                           name="amount"
+                           step="0.01"
+                           min="1"
+                           class="form-control form-control-lg font-mono"
+                           placeholder="Enter amount to disburse"
+                           required>
+                </div>
+                <div class="form-text">Cash debited from customer ledger with atomic row-lock balance validation.</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-dark">Teller Remarks / Notes (Optional)</label>
+                <input type="text"
+                       name="notes"
+                       class="form-control"
+                       placeholder="e.g. Customer counter withdrawal slip verified">
+            </div>
+
+            <button type="submit" class="btn btn-danger w-100 py-3 rounded-pill fw-bold shadow-sm fs-6">
+                <i class="bi bi-cash-stack me-1"></i> Disburse Cash Withdrawal &amp; Generate Receipt
+            </button>
+        </form>
+    </div>
+
+    <!-- Teller Compliance Notice -->
+    <div class="card p-3 border-0 bg-light rounded-4 text-muted small">
+        <div class="d-flex gap-2">
+            <i class="bi bi-shield-lock-fill text-secondary fs-5"></i>
+            <div>
+                <strong>Teller Verification &amp; Simulation Notice:</strong>
+                Always verify customer identity, confirm available ledger balance, and ensure branch cash drawer limits before disbursing withdrawal requests. This is a simulated cash transaction for training and evaluation purposes.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% include "includes/submit_guard.html" %}
+
+{% endblock %}

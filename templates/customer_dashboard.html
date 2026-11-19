@@ -13,6 +13,7 @@ body{
 background:linear-gradient(135deg,#eef2ff,#f8f9ff);
 font-family:Segoe UI;
 padding-bottom:110px;
+overflow-x:hidden;
 }
 
 /* Glass card */
@@ -32,54 +33,63 @@ background:linear-gradient(90deg,#5f5cff,#00d4ff);
 font-weight:700;
 }
 
-/* Action hover */
+/* Action hover & Responsive Services Grid */
+.services-grid {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 12px;
+margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+.services-grid {
+grid-template-columns: repeat(4, 1fr);
+gap: 16px;
+}
+}
+
+.service-tile-link {
+text-decoration: none;
+color: inherit;
+display: block;
+height: 100%;
+}
+.service-tile-link:hover {
+text-decoration: none;
+color: inherit;
+}
+
 .action-card{
 border-radius:18px;
-transition:.3s;
+min-height: 105px;
+height: 100%;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+padding: 16px 12px;
+text-align: center;
+transition: transform .25s ease, box-shadow .25s ease;
+box-sizing: border-box;
 }
 .action-card:hover{
-transform:translateY(-5px);
-box-shadow:0 15px 30px rgba(0,0,0,.2);
+transform:translateY(-4px);
+box-shadow:0 15px 30px rgba(0,0,0,.15);
+}
+.action-card i {
+font-size: 1.85rem;
+line-height: 1;
+margin-bottom: 8px;
+}
+.action-card span {
+font-size: 0.85rem;
+font-weight: 600;
+line-height: 1.25;
+color: #0f172a;
+text-align: center;
+word-break: break-word;
 }
 
-/* Bottom Navbar */
-.bottom-nav{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
-margin:auto;
-width:100%;
-max-width:520px;
-height:78px;
-background:linear-gradient(120deg,#0f0f10,#1c1c1f);
-border-top-left-radius:28px;
-border-top-right-radius:28px;
-box-shadow:0 -10px 30px rgba(0,0,0,.35);
-display:flex;
-align-items:center;
-justify-content:space-around;
-z-index:9999;
-}
-
-.bottom-nav a{
-flex:1;
-text-align:center;
-color:#9aa0a6;
-font-size:12px;
-text-decoration:none;
-}
-
-.bottom-nav i{
-display:block;
-font-size:22px;
-margin-bottom:4px;
-}
-
-.bottom-nav a.active{
-color:#7b7cff;
-transform:translateY(-6px);
-}
 </style>
 
 </head>
@@ -88,12 +98,25 @@ transform:translateY(-6px);
 
 <div class="container mt-4">
 
-<h5 class="mb-3">
-Welcome,
-<span style="color:#5f5cff;font-weight:600;">
-{{ request.user.username }}
-</span> 👋
-</h5>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="mb-0">
+    Welcome,
+    <span style="color:#5f5cff;font-weight:600;">
+      {{ request.user.username }}
+    </span> 👋
+  </h5>
+  <div>
+    <a href="{% url 'notifications_list' %}" class="btn btn-sm btn-outline-primary rounded-pill position-relative px-3 py-1 shadow-sm" title="Notifications">
+      <i class="bi bi-bell fs-6"></i>
+      {% if unread_notifications_count > 0 %}
+      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+        {{ unread_notifications_count }}
+        <span class="visually-hidden">unread messages</span>
+      </span>
+      {% endif %}
+    </a>
+  </div>
+</div>
 
 <!-- Balance -->
 <div class="glass-card p-4 text-center mb-3">
@@ -109,23 +132,34 @@ Welcome,
 
 <!-- Account Details -->
 <div class="glass-card p-3 mb-3">
-<h6 class="mb-3">Account Details</h6>
+<h6 class="mb-3 fw-bold">Account Overview &amp; Details</h6>
 
 {% if account %}
 
 <p class="mb-1"><strong>Account No:</strong> {{ account.account_number }}</p>
 <p class="mb-1"><strong>Account Type:</strong> {{ account.account_type }}</p>
 
-<p class="mb-1"><strong>Email:</strong> {{ account.email }}</p>
-<p class="mb-1"><strong>Phone:</strong> {{ account.phone }}</p>
-<p class="mb-1"><strong>Aadhaar:</strong> {{ account.aadhaar }}</p>
-<p class="mb-1"><strong>PAN:</strong> {{ account.pan }}</p>
-<p class="mb-1"><strong>Address:</strong> {{ account.address }}</p>
-<p class="mb-1"><strong>Pincode:</strong> {{ account.pincode }}</p>
+<p class="mb-1"><strong>Email:</strong> {{ account.email|default:"-" }}</p>
+<p class="mb-1"><strong>Phone:</strong> {{ account.phone|default:"-" }}</p>
+<p class="mb-1"><strong>Address:</strong> {{ account.address|default:"-" }}</p>
+<p class="mb-1"><strong>Pincode:</strong> {{ account.pincode|default:"-" }}</p>
 
-<p class="mb-0">
+<p class="mb-0 d-flex align-items-center justify-content-between pt-1">
+<span>
 <strong>KYC Status:</strong>
-<span class="badge bg-success">Verified</span>
+{% if account.user.kyc_status == 'APPROVED' or account.user.kyc_verified %}
+<span class="badge bg-success">Verified Active</span>
+{% elif account.user.kyc_status == 'PENDING' %}
+<span class="badge bg-warning text-dark">Pending Verification</span>
+{% elif account.user.kyc_status == 'UNDER_REVIEW' %}
+<span class="badge bg-info text-dark">Under Review</span>
+{% elif account.user.kyc_status == 'REJECTED' %}
+<span class="badge bg-danger">Rejected</span>
+{% else %}
+<span class="badge bg-secondary">Not Submitted</span>
+{% endif %}
+</span>
+<a href="{% url 'customer_kyc' %}" class="small text-decoration-none fw-semibold">Manage KYC &rarr;</a>
 </p>
 
 {% else %}
@@ -136,58 +170,72 @@ Welcome,
 
 </div>
 
-<!-- Quick Actions -->
-<div class="row g-3">
+<!-- Quick Actions Grid -->
+<h6 class="fw-bold mb-3 mt-4 text-dark">Banking Services &amp; Tools</h6>
+<div class="services-grid">
 
-<div class="col-6">
-<a href="/bank/fd/" class="text-decoration-none text-dark">
-<div class="glass-card action-card p-3 text-center">
-Fixed Deposit
+<a href="{% url 'customer_profile' %}" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-person-circle text-primary"></i>
+<span>My Profile</span>
 </div>
 </a>
-</div>
 
-<div class="col-6">
-<a href="/bank/loan/" class="text-decoration-none text-dark">
-<div class="glass-card action-card p-3 text-center">
-Loan
+<a href="{% url 'customer_kyc' %}" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-shield-check text-success"></i>
+<span>KYC Status</span>
 </div>
 </a>
+
+<a href="{% url 'beneficiary_list' %}" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-people text-info"></i>
+<span>Beneficiaries</span>
+</div>
+</a>
+
+<a href="{% url 'passbook' %}" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-file-earmark-pdf text-danger"></i>
+<span>Passbook</span>
+</div>
+</a>
+
+<a href="/bank/fd/" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-piggy-bank text-warning"></i>
+<span>Fixed Deposit</span>
+</div>
+</a>
+
+<a href="/bank/loan/" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-cash-stack text-dark"></i>
+<span>Loan</span>
+</div>
+</a>
+
+<a href="{% url 'card_list' %}" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-credit-card-2-front text-primary"></i>
+<span>Debit Cards</span>
+</div>
+</a>
+
+<a href="{% url 'support_ticket_list' %}" class="service-tile-link">
+<div class="glass-card action-card">
+<i class="bi bi-headset text-success"></i>
+<span>Support &amp; Help</span>
+</div>
+</a>
+
 </div>
 
 </div>
 
-</div>
-
-<!-- Bottom Navbar -->
-<div class="bottom-nav">
-
-<a href="/customer/dashboard/" class="active">
-<i class="bi bi-house"></i>
-Home
-</a>
-
-<a href="/bank/withdraw/">
-<i class="bi bi-dash-circle"></i>
-Withdraw
-</a>
-
-<a href="/bank/transfer/">
-<i class="bi bi-arrow-left-right"></i>
-Transfer
-</a>
-
-<a href="/bank/history/">
-<i class="bi bi-clock-history"></i>
-History
-</a>
-
-<a href="/logout/">
-<i class="bi bi-box-arrow-right"></i>
-Logout
-</a>
-
-</div>
+<!-- Bottom Navbar Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="home" %}
 
 <script>
 

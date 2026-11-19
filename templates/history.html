@@ -2,72 +2,37 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transaction History</title>
+<title>Transaction History — BEBANK</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="/static/images/bebank_b_monogram.svg">
 
 <style>
-body{
-background:#f4f6f9;
-font-family:Segoe UI;
-padding-bottom:110px;
+body {
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0f172a;
+    padding-bottom: 110px;
 }
 
-.card{
-border-radius:20px;
-box-shadow:0 10px 25px rgba(0,0,0,.1);
+.card {
+    border-radius: 18px;
+    box-shadow: 0 4px 15px rgba(10, 25, 47, 0.05);
 }
 
 /* Credit / Debit colors */
-.credit{
-color:#16a34a;
-font-weight:600;
+.credit {
+    color: #16a34a;
+    font-weight: 600;
 }
 
-.debit{
-color:#dc2626;
-font-weight:600;
+.debit {
+    color: #dc2626;
+    font-weight: 600;
 }
 
-/* Navbar */
-.bottom-nav{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
-margin:auto;
-width:100%;
-max-width:520px;
-height:78px;
-background:linear-gradient(120deg,#0f0f10,#1c1c1f);
-border-top-left-radius:28px;
-border-top-right-radius:28px;
-box-shadow:0 -10px 30px rgba(0,0,0,.35);
-display:flex;
-align-items:center;
-justify-content:space-around;
-z-index:9999;
-}
 
-.bottom-nav a{
-flex:1;
-text-align:center;
-color:#9aa0a6;
-font-size:12px;
-text-decoration:none;
-}
-
-.bottom-nav i{
-display:block;
-font-size:22px;
-margin-bottom:4px;
-}
-
-.bottom-nav a.active{
-color:#7b7cff;
-transform:translateY(-6px);
-}
 </style>
 </head>
 
@@ -75,99 +40,222 @@ transform:translateY(-6px);
 
 <div class="container mt-4">
 
-<h5 class="mb-3">Transaction History</h5>
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#0a192f;">Transaction History</h4>
+            {% if account %}
+            <p class="text-muted small mb-0">Account: <strong>{{ account.account_number }}</strong> ({{ account.account_type }})</p>
+            {% endif %}
+        </div>
+        {% if account %}
+        <div class="text-end">
+            <span class="text-muted small d-block">Available Balance</span>
+            <span class="fs-5 fw-bold" style="color:#0a192f; font-variant-numeric: tabular-nums;">₹{{ account.balance }}</span>
+        </div>
+        {% endif %}
+    </div>
 
-<div class="card p-3">
+    <!-- Filters Card -->
+    <div class="card p-3 mb-3 border-0">
+        <form method="get" class="row g-2 align-items-end">
+            {% if account %}
+                <input type="hidden" name="account_id" value="{{ account.id }}">
+            {% endif %}
+            <div class="col-md-3 col-6">
+                <label class="form-label small text-muted mb-1">Transaction Type</label>
+                <select name="type" class="form-select form-select-sm">
+                    <option value="">All Types</option>
+                    <option value="DEPOSIT" {% if selected_type == "DEPOSIT" %}selected{% endif %}>Deposit</option>
+                    <option value="WITHDRAW" {% if selected_type == "WITHDRAW" %}selected{% endif %}>Withdraw</option>
+                    <option value="TRANSFER_DEBIT" {% if selected_type == "TRANSFER_DEBIT" %}selected{% endif %}>Transfer Sent</option>
+                    <option value="TRANSFER_CREDIT" {% if selected_type == "TRANSFER_CREDIT" %}selected{% endif %}>Transfer Received</option>
+                    <option value="LOAN_CREDIT" {% if selected_type == "LOAN_CREDIT" %}selected{% endif %}>Loan Credited</option>
+                    <option value="LOAN_REPAYMENT_DEBIT" {% if selected_type == "LOAN_REPAYMENT_DEBIT" %}selected{% endif %}>Loan Repayment</option>
+                    <option value="FD_DEBIT" {% if selected_type == "FD_DEBIT" %}selected{% endif %}>Fixed Deposit Created</option>
+                    <option value="FD_MATURITY_CREDIT" {% if selected_type == "FD_MATURITY_CREDIT" %}selected{% endif %}>FD Maturity Payout</option>
+                    <option value="FD_CLOSURE_CREDIT" {% if selected_type == "FD_CLOSURE_CREDIT" %}selected{% endif %}>FD Closure Payout</option>
+                </select>
+            </div>
 
-<table class="table table-borderless align-middle">
+            <div class="col-md-2 col-6">
+                <label class="form-label small text-muted mb-1">Flow</label>
+                <select name="flow" class="form-select form-select-sm">
+                    <option value="">All Flows</option>
+                    <option value="credit" {% if selected_flow == "credit" %}selected{% endif %}>Credit (+)</option>
+                    <option value="debit" {% if selected_flow == "debit" %}selected{% endif %}>Debit (-)</option>
+                </select>
+            </div>
 
-<thead>
-<tr>
-<th>Date</th>
-<th>Type</th>
-<th class="text-end">Amount</th>
-</tr>
-</thead>
+            <div class="col-md-2 col-6">
+                <label class="form-label small text-muted mb-1">Date From</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control form-control-sm">
+            </div>
 
-<tbody>
+            <div class="col-md-2 col-6">
+                <label class="form-label small text-muted mb-1">Date To</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm">
+            </div>
 
-{% for t in transactions %}
-<tr>
+            <div class="col-md-3 col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-dark flex-grow-1" style="background:#0a192f; border-color:#0a192f;">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+                {% if selected_type or selected_flow or date_from or date_to %}
+                    <a href="{% url 'history' %}{% if account %}?account_id={{ account.id }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+                        Reset
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
 
-<td>{{ t.created_at|date:"d M Y H:i" }}</td>
+    <!-- Transactions Table Card -->
+    <div class="card p-3 border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Type / Description</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-end">Balance Before</th>
+                        <th class="text-end">Balance After</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions %}
+                    <tr>
+                        <td class="small text-nowrap" style="font-variant-numeric: tabular-nums;">
+                            {{ t.created_at|date:"d M Y H:i" }}
+                        </td>
+                        <td>
+                            <div>
+                                {% if t.transaction_type == "DEPOSIT" %}
+                                    <span class="badge bg-success">Deposit</span>
+                                {% elif t.transaction_type == "LOAN_CREDIT" %}
+                                    <span class="badge bg-primary">Loan Credited</span>
+                                {% elif t.transaction_type == "LOAN_REPAYMENT_DEBIT" %}
+                                    <span class="badge bg-warning text-dark">Loan Repayment</span>
+                                {% elif t.transaction_type == "FD_DEBIT" %}
+                                    <span class="badge bg-secondary">FD Created</span>
+                                {% elif t.transaction_type == "FD_MATURITY_CREDIT" %}
+                                    <span class="badge bg-success">FD Matured</span>
+                                {% elif t.transaction_type == "FD_CLOSURE_CREDIT" %}
+                                    <span class="badge bg-info text-dark">FD Closed</span>
+                                {% elif t.transaction_type == "TRANSFER" or t.transaction_type == "TRANSFER_DEBIT" %}
+                                    <span class="badge bg-info text-dark">Transfer Sent</span>
+                                {% elif t.transaction_type == "TRANSFER_CREDIT" %}
+                                    <span class="badge bg-success">Transfer Received</span>
+                                {% elif t.transaction_type == "WITHDRAW" %}
+                                    <span class="badge bg-danger">Withdraw</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Other</span>
+                                {% endif %}
+                            </div>
+                            {% if t.related_account %}
+                                <div class="small text-muted mt-1">
+                                    {% if t.transaction_type == "TRANSFER_CREDIT" %}
+                                        From A/C: <strong>{{ t.related_account.account_number }}</strong>
+                                    {% else %}
+                                        To A/C: <strong>{{ t.related_account.account_number }}</strong>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            {% if t.reference_id %}
+                                <div class="text-muted" style="font-size:0.75rem; font-family:monospace;">
+                                    Ref: {{ t.reference_id }}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap" style="font-variant-numeric: tabular-nums;">
+                            {% if t.is_credit or t.transaction_type == "DEPOSIT" or t.transaction_type == "LOAN_CREDIT" or t.transaction_type == "TRANSFER_CREDIT" %}
+                                <span class="credit">+ ₹{{ t.amount }}</span>
+                            {% else %}
+                                <span class="debit">- ₹{{ t.amount }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end small text-muted text-nowrap" style="font-variant-numeric: tabular-nums;">
+                            {% if t.balance_before != None %}
+                                ₹{{ t.balance_before }}
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end small fw-semibold text-nowrap" style="font-variant-numeric: tabular-nums;">
+                            {% if t.balance_after != None %}
+                                ₹{{ t.balance_after }}
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-3 d-block mb-1"></i>
+                            No transactions found matching your criteria.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-<td>
-    {% if t.transaction_type == "DEPOSIT" %}
-        <span class="badge bg-success">Deposit</span>
+        <!-- Pagination Controls -->
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 pt-3 border-top gap-2">
+            <div class="small text-muted">
+                Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} transactions
+            </div>
+            <nav aria-label="Transaction pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link text-dark" href="?{% if filter_querystring %}{{ filter_querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                    {% endif %}
 
-    {% elif t.transaction_type == "LOAN_CREDIT" %}
-        <span class="badge bg-primary">Loan Credited</span>
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if num == page_obj.number %}
+                            <li class="page-item active">
+                                <span class="page-link text-white" style="background:#0a192f; border-color:#0a192f;">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link text-dark" href="?{% if filter_querystring %}{{ filter_querystring }}&{% endif %}page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
 
-    {% elif t.transaction_type == "TRANSFER" %}
-        <span class="badge bg-info">Transfer</span>
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link text-dark" href="?{% if filter_querystring %}{{ filter_querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">Next</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% elif page_obj and page_obj.paginator.count > 0 %}
+        <div class="small text-muted text-end mt-2">
+            Showing all {{ page_obj.paginator.count }} transaction{{ page_obj.paginator.count|pluralize }}
+        </div>
+        {% endif %}
+    </div>
 
-    {% elif t.transaction_type == "WITHDRAW" %}
-        <span class="badge bg-danger">Withdraw</span>
-    {% else %}
-        <span class="badge bg-secondary">Other</span>
-    {% endif %}
-</td>
-
-<td class="text-end">
-
-    {% if t.transaction_type == "DEPOSIT" or t.transaction_type == "LOAN_CREDIT" %}
-        <span class="credit">+ ₹{{ t.amount }}</span>
-    {% else %}
-        <span class="debit">- ₹{{ t.amount }}</span>
-    {% endif %}
-
-</td>
-
-</tr>
-
-{% empty %}
-<tr>
-<td colspan="3" class="text-center text-muted">No transactions yet</td>
-</tr>
-{% endfor %}
-
-</tbody>
-
-</table>
+    <!-- Download PDF Statement -->
+    <a href="{% url 'history_pdf' %}{% if account %}?account_id={{ account.id }}{% if filter_querystring %}&{{ filter_querystring }}{% endif %}{% elif filter_querystring %}?{{ filter_querystring }}{% endif %}" class="btn btn-dark w-100 mt-3 py-2 fw-semibold" style="background:#0a192f; border-color:#0a192f; border-radius:12px;">
+        <i class="bi bi-download me-1"></i> Download PDF Statement
+    </a>
 
 </div>
 
-<!-- ✅ FIXED BUTTON -->
-<a href="{% url 'history_pdf' %}" class="btn btn-dark w-100 mt-3">
-<i class="bi bi-download"></i> Download PDF Statement
-</a>
-
-</div>
-
-<!-- Bottom Navbar -->
-<div class="bottom-nav">
-
-<a href="/customer/dashboard/">
-<i class="bi bi-house"></i>Home
-</a>
-
-<a href="/bank/withdraw/">
-<i class="bi bi-dash-circle"></i>Withdraw
-</a>
-
-<a href="/bank/transfer/">
-<i class="bi bi-arrow-left-right"></i>Transfer
-</a>
-
-<a href="/bank/history/" class="active">
-<i class="bi bi-clock-history"></i>History
-</a>
-
-<a href="/logout/">
-<i class="bi bi-box-arrow-right"></i>Logout
-</a>
-
-</div>
+<!-- Bottom Navbar Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="history" %}
 
 </body>
 </html>

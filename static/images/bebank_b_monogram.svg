@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="85 65 300 360" width="100%" height="100%" fill="none" class="bebank-monogram-svg">
+  <defs>
+    <linearGradient id="bebankGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="35%" stop-color="#eab308" />
+      <stop offset="70%" stop-color="#ca8a04" />
+      <stop offset="100%" stop-color="#a16207" />
+    </linearGradient>
+    <linearGradient id="bebankGoldRibbon" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="25%" stop-color="#eab308" />
+      <stop offset="75%" stop-color="#ca8a04" />
+      <stop offset="100%" stop-color="#854d0e" />
+    </linearGradient>
+    <filter id="subtleGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.25" flood-color="#000000"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#subtleGlow)">
+    <!-- White Letter 'B' Backbone and Bowls -->
+    <!-- Main Serif Stem and Back Curve -->
+    <path d="M 120 70 L 235 70 C 295 70 335 105 335 155 C 335 188 315 212 280 224 C 325 238 350 270 350 315 C 350 365 305 400 235 400 L 120 400 L 120 70 Z" fill="#ffffff" />
+    
+    <!-- Cutouts to form the inner apertures of B -->
+    <!-- Top inner cutout -->
+    <path d="M 180 115 L 230 115 C 265 115 285 130 285 155 C 285 180 265 195 230 195 L 180 195 Z" fill="#000000" opacity="0" />
+    
+    <!-- Classical Bank Temple Facade embedded into the B -->
+    <!-- Upper Pediment Gold Triangular Roof -->
+    <polygon points="135,190 235,130 335,190" fill="url(#bebankGoldGrad)" stroke="#b45309" stroke-width="1.5" />
+    <!-- Architrave white block -->
+    <rect x="145" y="190" width="180" height="14" fill="#ffffff" rx="1" />
+    <rect x="150" y="192" width="170" height="2" fill="url(#bebankGoldGrad)" />
+
+    <!-- Three Classical Columns (Left, Center, Right) -->
+    <!-- Column 1 (Left) -->
+    <rect x="160" y="204" width="22" height="100" fill="#ffffff" rx="2" />
+    <rect x="156" y="204" width="30" height="8" fill="#ffffff" rx="1" />
+    <rect x="156" y="296" width="30" height="8" fill="#ffffff" rx="1" />
+    <line x1="167" y1="212" x2="167" y2="296" stroke="#e2e8f0" stroke-width="1.5" />
+    <line x1="175" y1="212" x2="175" y2="296" stroke="#cbd5e1" stroke-width="1.5" />
+
+    <!-- Column 2 (Center) -->
+    <rect x="224" y="204" width="22" height="100" fill="#ffffff" rx="2" />
+    <rect x="220" y="204" width="30" height="8" fill="#ffffff" rx="1" />
+    <rect x="220" y="296" width="30" height="8" fill="#ffffff" rx="1" />
+    <line x1="231" y1="212" x2="231" y2="296" stroke="#e2e8f0" stroke-width="1.5" />
+    <line x1="239" y1="212" x2="239" y2="296" stroke="#cbd5e1" stroke-width="1.5" />
+
+    <!-- Column 3 (Right) -->
+    <rect x="288" y="204" width="22" height="100" fill="#ffffff" rx="2" />
+    <rect x="284" y="204" width="30" height="8" fill="#ffffff" rx="1" />
+    <rect x="284" y="296" width="30" height="8" fill="#ffffff" rx="1" />
+    <line x1="295" y1="212" x2="295" y2="296" stroke="#e2e8f0" stroke-width="1.5" />
+    <line x1="303" y1="212" x2="303" y2="296" stroke="#cbd5e1" stroke-width="1.5" />
+
+    <!-- Column Base Plinth -->
+    <rect x="145" y="304" width="180" height="16" fill="#ffffff" rx="2" />
+    <rect x="140" y="316" width="190" height="10" fill="#ffffff" rx="2" />
+
+    <!-- Elegant Dynamic Gold Swoosh Sweeping Around the Lower Curve -->
+    <path d="M 105 350 C 145 340 220 330 295 315 C 335 307 365 320 375 345 C 385 370 365 400 310 415 C 240 435 150 420 100 375 C 95 370 98 355 105 350 Z" fill="url(#bebankGoldRibbon)" />
+    <!-- Inner dynamic highlight on the swoosh -->
+    <path d="M 125 365 C 180 355 260 345 325 330 C 350 325 365 335 368 350 C 355 375 305 398 245 405 C 185 412 140 395 125 365 Z" fill="#ffffff" opacity="0.35" />
+  </g>
+</svg>

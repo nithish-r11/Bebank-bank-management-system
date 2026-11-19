@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 from django.test import TestCase, Client, RequestFactory
 from django.core.exceptions import PermissionDenied
@@ -240,7 +241,8 @@ class ObjectLevelOwnershipIdorTests(TestCase):
         resp1 = self.client.post('/bank/transfer/', data={
             'account_id': self.account_b.id,
             'account_number': self.account_a.account_number,
-            'amount': '300.00'
+            'amount': '300.00',
+            'idempotency_key': str(uuid.uuid4())
         })
         self.assertEqual(resp1.status_code, 404)
 
@@ -248,7 +250,8 @@ class ObjectLevelOwnershipIdorTests(TestCase):
         resp2 = self.client.post('/bank/transfer/', data={
             'source_account_id': self.account_b.id,
             'account_number': self.account_a.account_number,
-            'amount': '300.00'
+            'amount': '300.00',
+            'idempotency_key': str(uuid.uuid4())
         })
         self.assertEqual(resp2.status_code, 404)
 
@@ -324,7 +327,8 @@ class ObjectLevelOwnershipIdorTests(TestCase):
         # Legitimate transfer to Customer B
         resp_t = self.client.post('/bank/transfer/', data={
             'account_number': self.account_b.account_number,
-            'amount': '150.00'
+            'amount': '150.00',
+            'idempotency_key': str(uuid.uuid4())
         })
         self.assertEqual(resp_t.status_code, 302)
         self.account_a.refresh_from_db()

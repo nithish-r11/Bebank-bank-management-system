@@ -1,0 +1,113 @@
+{% extends "base_employee.html" %}
+
+{% block title %}In-Branch Cash Deposit — BEBANK Staff Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3" style="max-width: 680px; margin: 0 auto;">
+
+    <!-- Back & Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'staff_operations' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-2">
+                <i class="bi bi-arrow-left me-1"></i> Account Operations
+            </a>
+            <h3 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-box-arrow-in-down text-success me-2"></i>In-Branch Cash Deposit
+            </h3>
+            <p class="text-muted small mb-0">Authorized counter deposit with instant ledger settlement &amp; receipt.</p>
+        </div>
+        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+            Teller Counter
+        </span>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Deposit Form Card -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <form method="POST" id="staff-deposit-form">
+            {% csrf_token %}
+            <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-dark">Customer Account Number</label>
+                <input type="text"
+                       name="account_number"
+                       value="{{ account.account_number|default:account_number }}"
+                       class="form-control form-control-lg font-mono"
+                       placeholder="e.g. 10001"
+                       required>
+                <div class="form-text">Enter customer's active account number.</div>
+            </div>
+
+            {% if account %}
+            <div class="p-3 bg-light rounded-3 mb-3 border">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold text-dark">{{ account.user.get_full_name|default:account.user.username }}</div>
+                        <div class="text-muted small">Account Type: <span class="badge bg-secondary-subtle text-dark">{{ account.account_type }}</span></div>
+                    </div>
+                    <div class="text-end">
+                        <div class="small text-muted">Current Balance</div>
+                        <div class="h5 fw-bold text-success mb-0 font-mono">₹{{ account.balance|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-dark">Deposit Amount (₹)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white">₹</span>
+                    <input type="number"
+                           name="amount"
+                           step="0.01"
+                           min="1"
+                           class="form-control form-control-lg font-mono"
+                           placeholder="Enter deposit amount"
+                           required>
+                </div>
+                <div class="form-text">Direct ledger credit with row lock validation and snapshot recording.</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-dark">Teller Remarks / Notes (Optional)</label>
+                <input type="text"
+                       name="notes"
+                       class="form-control"
+                       placeholder="e.g. In-person branch cash deposit over counter">
+            </div>
+
+            <button type="submit" class="btn btn-success w-100 py-3 rounded-pill fw-bold shadow-sm fs-6">
+                <i class="bi bi-box-arrow-in-down me-1"></i> Credit Customer Account &amp; Generate Receipt
+            </button>
+        </form>
+    </div>
+
+    <!-- Teller Compliance Notice -->
+    <div class="card p-3 border-0 bg-light rounded-4 text-muted small">
+        <div class="d-flex gap-2">
+            <i class="bi bi-shield-check text-secondary fs-5"></i>
+            <div>
+                <strong>Teller Verification &amp; Simulation Notice:</strong>
+                Verify customer currency denomination before confirming ledger credit. This is an academic banking simulation; no actual physical cash is handled. Each transaction is protected by atomic idempotency tokens.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% include "includes/submit_guard.html" %}
+
+{% endblock %}
+

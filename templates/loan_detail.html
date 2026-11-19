@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loan #{{ loan.id }} — Schedule & Repayment — BEBANK</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="/static/images/bebank_b_monogram.svg">
+
+<style>
+body {
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0f172a;
+    padding-bottom: 110px;
+}
+
+.card {
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(10, 25, 47, 0.05);
+}
+
+.font-mono {
+    font-family: 'Consolas', 'SF Mono', 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.btn-primary-navy {
+    background: #0a192f;
+    border-color: #0a192f;
+    color: #ffffff;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+.btn-primary-navy:hover {
+    background: #112240;
+    border-color: #112240;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(10, 25, 47, 0.03);
+}
+
+/* Toast alert */
+.toast-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 18px;
+    color: white;
+    border-radius: 8px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: 0.4s;
+}
+.toast-box.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast-success { background: #16a34a; }
+.toast-error { background: #dc2626; }
+.toast-info { background: #0284c7; }
+
+
+</style>
+</head>
+
+<body>
+
+<div class="container mt-4" style="max-width: 980px;">
+
+    <!-- Top Navigation Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h4 class="fw-bold mb-0" style="color: #0a192f;">
+                    Loan #{{ loan.id }}
+                </h4>
+                {% if loan.status == "APPROVED" %}
+                    <span class="badge bg-success">Active / Approved</span>
+                {% elif loan.status == "PENDING" %}
+                    <span class="badge bg-warning text-dark">Pending Review</span>
+                {% elif loan.status == "UNDER_REVIEW" %}
+                    <span class="badge bg-info text-dark">Under Review</span>
+                {% elif loan.status == "CLOSED" %}
+                    <span class="badge bg-secondary">Closed / Fully Repaid</span>
+                {% elif loan.status == "REJECTED" %}
+                    <span class="badge bg-danger">Rejected</span>
+                {% endif %}
+            </div>
+            <p class="text-muted small mb-0 mt-1">
+                Disbursement Account: <span class="font-mono fw-semibold text-dark">{{ loan.account.account_number }}</span>
+                &bull; Applied: {{ loan.created_at|date:"d M Y" }}
+                {% if loan.disbursed_at %}
+                    &bull; Disbursed: {{ loan.disbursed_at|date:"d M Y" }}
+                {% endif %}
+                {% if loan.closed_at %}
+                    &bull; Closed: {{ loan.closed_at|date:"d M Y" }}
+                {% endif %}
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'loan' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> All Loans
+            </a>
+        </div>
+    </div>
+
+    <!-- Loan Financial Snapshot Metrics -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <span class="text-muted small fw-semibold">Principal Borrowed</span>
+                <h4 class="fw-bold mb-0 font-mono mt-1 text-dark">₹{{ loan.amount }}</h4>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <span class="text-muted small fw-semibold">Monthly EMI</span>
+                <h4 class="fw-bold mb-0 font-mono mt-1 text-primary">
+                    {% if loan.emi_amount %}₹{{ loan.emi_amount }}{% else %}--{% endif %}
+                </h4>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <span class="text-muted small fw-semibold">Total Payable</span>
+                <h4 class="fw-bold mb-0 font-mono mt-1 text-dark">
+                    {% if loan.total_payable %}₹{{ loan.total_payable }}{% else %}--{% endif %}
+                </h4>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="stat-card">
+                <span class="text-muted small fw-semibold">Outstanding Balance</span>
+                <h4 class="fw-bold mb-0 font-mono mt-1 {% if loan.outstanding_balance > 0 %}text-danger{% else %}text-success{% endif %}">
+                    {% if loan.outstanding_balance is not None %}₹{{ loan.outstanding_balance }}{% else %}--{% endif %}
+                </h4>
+            </div>
+        </div>
+    </div>
+
+    <!-- Secondary Meta Details -->
+    <div class="card p-3 mb-4 bg-white">
+        <div class="row text-center font-mono small">
+            <div class="col-md-3 col-6 py-1">
+                <span class="text-muted d-block" style="font-family: inherit;">Interest Rate</span>
+                <span class="fw-bold text-dark">{{ loan.interest_rate }}% p.a.</span>
+            </div>
+            <div class="col-md-3 col-6 py-1">
+                <span class="text-muted d-block" style="font-family: inherit;">Total Tenure</span>
+                <span class="fw-bold text-dark">{{ loan.duration_months }} Months</span>
+            </div>
+            <div class="col-md-3 col-6 py-1">
+                <span class="text-muted d-block" style="font-family: inherit;">Total Interest Accrued</span>
+                <span class="fw-bold text-dark">₹{{ loan.total_interest|default:"0.00" }}</span>
+            </div>
+            <div class="col-md-3 col-6 py-1">
+                <span class="text-muted d-block" style="font-family: inherit;">Total Amount Repaid</span>
+                <span class="fw-bold text-success">₹{{ loan.total_paid|default:"0.00" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repayment Section (Active Loans with Remaining Balance) -->
+    {% if loan.is_repayable %}
+    <div class="card p-4 mb-4 border-primary" style="background: #f0f7ff;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0" style="color: #0a192f;">
+                    <i class="bi bi-wallet-fill me-2 text-primary"></i>Repay Loan EMI
+                </h5>
+                <p class="text-muted small mb-0">Payments are debited atomically and allocated to the oldest outstanding installments first.</p>
+            </div>
+            <span class="badge bg-primary font-mono fs-6">Due: ₹{{ loan.outstanding_balance }}</span>
+        </div>
+
+        <form method="POST" action="{% url 'loan_repay' loan.id %}" id="loanRepayForm">
+            {% csrf_token %}
+            <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold text-muted">Debit Account</label>
+                    <select name="account_id" class="form-select font-mono" required>
+                        {% for acc in accounts %}
+                            <option value="{{ acc.id }}" {% if acc.id == loan.account_id %}selected{% endif %}>
+                                {{ acc.account_number }} ({{ acc.account_type }}) — Bal: ₹{{ acc.balance }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-muted">Repayment Amount (₹)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white font-mono">₹</span>
+                        <input type="number" name="amount" id="repayAmountInput" class="form-control font-mono"
+                               placeholder="0.00" min="0.01" max="{{ loan.outstanding_balance }}" step="0.01"
+                               value="{% if next_installment %}{{ next_installment.remaining_due }}{% else %}{{ loan.outstanding_balance }}{% endif %}" required>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary-navy w-100 py-2">
+                        <i class="bi bi-check-circle me-1"></i>Pay Now
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="d-flex gap-2 mt-3 flex-wrap align-items-center">
+                <span class="text-muted small">Quick Presets:</span>
+                {% if next_installment and next_installment.remaining_due > 0 %}
+                <button type="button" class="btn btn-sm btn-outline-primary font-mono py-1 px-2"
+                        onclick="setRepayAmount('{{ next_installment.remaining_due }}')">
+                    Next EMI (₹{{ next_installment.remaining_due }})
+                </button>
+                {% endif %}
+                <button type="button" class="btn btn-sm btn-outline-dark font-mono py-1 px-2"
+                        onclick="setRepayAmount('{{ loan.outstanding_balance }}')">
+                    Pay Full Remaining (₹{{ loan.outstanding_balance }})
+                </button>
+            </div>
+        </form>
+    </div>
+    {% elif loan.status == "CLOSED" %}
+    <div class="alert alert-success d-flex align-items-center mb-4 rounded-3 p-3">
+        <i class="bi bi-patch-check-fill fs-3 me-3 text-success"></i>
+        <div>
+            <h6 class="fw-bold mb-0">Loan Closed and Fully Repaid 🎉</h6>
+            <div class="small">All scheduled installments have been settled down to ₹0.00. Thank you for banking with BEBANK!</div>
+        </div>
+    </div>
+    {% elif loan.status == "PENDING" %}
+    <div class="alert alert-warning d-flex align-items-center mb-4 rounded-3 p-3">
+        <i class="bi bi-hourglass-split fs-3 me-3 text-warning"></i>
+        <div>
+            <h6 class="fw-bold mb-0">Application Pending Approval</h6>
+            <div class="small">This loan application is awaiting administrative review. Once approved, the principal will be disbursed and the amortization schedule will activate.</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Amortization Schedule Table -->
+    <div class="card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0" style="color: #0a192f;">
+                    <i class="bi bi-calendar3 me-2 text-primary"></i>Amortization Schedule
+                </h5>
+                <span class="text-muted small">Detailed reducing-balance breakdown per monthly installment</span>
+            </div>
+            {% if installments %}
+                <span class="badge bg-light text-dark font-mono border">{{ installments.count }} Installments</span>
+            {% endif %}
+        </div>
+
+        {% if installments %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 font-mono small">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center">#</th>
+                        <th>Due Date</th>
+                        <th class="text-end">Opening Principal</th>
+                        <th class="text-end">Principal</th>
+                        <th class="text-end">Interest</th>
+                        <th class="text-end">EMI Due</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Paid Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inst in installments %}
+                    <tr class="{% if inst.status == 'PAID' %}table-light text-muted{% elif inst.status == 'PARTIALLY_PAID' %}table-warning{% endif %}">
+                        <td class="text-center fw-bold">{{ inst.installment_number }}</td>
+                        <td>{{ inst.due_date|date:"d M Y" }}</td>
+                        <td class="text-end">₹{{ inst.opening_principal }}</td>
+                        <td class="text-end text-dark">₹{{ inst.principal_component }}</td>
+                        <td class="text-end text-muted">₹{{ inst.interest_component }}</td>
+                        <td class="text-end fw-bold text-primary">₹{{ inst.emi_due }}</td>
+                        <td class="text-end text-success fw-semibold">₹{{ inst.amount_paid }}</td>
+                        <td class="text-center">
+                            {% if inst.status == "PAID" %}
+                                <span class="badge bg-success">Paid</span>
+                            {% elif inst.status == "PARTIALLY_PAID" %}
+                                <span class="badge bg-warning text-dark">Partial</span>
+                            {% elif inst.status == "OVERDUE" %}
+                                <span class="badge bg-danger">Overdue</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            {% if inst.paid_at %}
+                                {{ inst.paid_at|date:"d M Y" }}
+                            {% else %}
+                                <span class="text-muted">--</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-calendar-x display-6 d-block mb-2"></i>
+            <em>Amortization schedule will be generated upon loan approval.</em>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Repayment History Table -->
+    <div class="card p-4">
+        <h5 class="fw-bold mb-3" style="color: #0a192f;">
+            <i class="bi bi-receipt-cutoff me-2 text-primary"></i>Repayment Transaction History
+        </h5>
+
+        {% if repayments %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 font-mono small">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Reference ID</th>
+                        <th>Debited Account</th>
+                        <th class="text-end">Amount Paid</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rep in repayments %}
+                    <tr>
+                        <td class="text-nowrap">{{ rep.payment_date|date:"d M Y H:i" }}</td>
+                        <td class="text-primary fw-semibold">{{ rep.reference_id }}</td>
+                        <td>{{ rep.account.account_number }}</td>
+                        <td class="text-end fw-bold text-success">+ ₹{{ rep.amount }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="bi bi-clock-history display-6 d-block mb-2"></i>
+            <em>No repayments recorded yet for this loan.</em>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Bottom Navigation Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="loan" %}
+
+<!-- Toast Box -->
+{% if messages %}
+<div id="toast" class="toast-box"></div>
+<script>
+const toast = document.getElementById("toast");
+{% for message in messages %}
+    toast.innerText = "{{ message }}";
+    toast.classList.add("show");
+    {% if message.tags == 'error' %}
+        toast.classList.add("toast-error");
+    {% elif message.tags == 'info' %}
+        toast.classList.add("toast-info");
+    {% else %}
+        toast.classList.add("toast-success");
+    {% endif %}
+    setTimeout(() => { toast.classList.remove("show"); }, 4000);
+{% endfor %}
+</script>
+{% endif %}
+
+<script>
+function setRepayAmount(amount) {
+    const input = document.getElementById('repayAmountInput');
+    if (input) {
+        input.value = amount;
+    }
+}
+</script>
+
+{% include "includes/submit_guard.html" %}
+
+</body>
+</html>
+

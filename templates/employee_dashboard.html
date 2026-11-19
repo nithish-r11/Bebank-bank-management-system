@@ -1,200 +1,544 @@
 {% extends 'base_employee.html' %}
 
+{% block title %}Employee Dashboard — BEBANK Staff Portal{% endblock %}
+
 {% block content %}
+<div class="container-fluid px-2 px-md-4" style="max-width: 1320px;">
 
-<style>
-
-/* 🔥 GLOBAL SPACING FIX */
-.section{
-    margin-bottom:30px;
-}
-
-/* 🔥 CENTER WRAPPER */
-.main-wrapper{
-    max-width:1100px;
-    margin:auto;
-}
-
-/* 🔥 Bigger Text */
-.stat-title{
-    font-size:18px;
-    opacity:0.9;
-}
-
-.stat-value{
-    font-size:32px;
-    font-weight:700;
-}
-
-.label{
-    font-size:16px;
-    font-weight:600;
-    color:#555;
-}
-
-.value{
-    font-size:18px;
-    font-weight:500;
-}
-
-/* 🔥 CARD IMPROVEMENT */
-.big-card{
-    padding:25px !important;
-    border-radius:18px !important;
-}
-
-/* 🔥 SPACE BETWEEN CARDS */
-.card{
-    margin-bottom:20px;
-}
-
-/* 🔥 SEARCH BOX ALIGN */
-.search-box{
-    max-width:500px;
-    margin:auto;
-}
-
-/* 🔥 DETAILS BOX */
-.details-box{
-    max-width:800px;
-    margin:auto;
-}
-
-</style>
-
-<div class="container mt-4 main-wrapper">
-
-<h2 class="mb-4 fw-bold text-center">👨‍💼 Employee Dashboard</h2>
-
-<!-- 🔔 Messages -->
-{% if messages %}
-    {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} text-center section">
-            {{ message }}
+    <!-- 🌟 Top Hero & Greeting -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: var(--bebank-navy-primary);">
+                👨‍💼 Employee Operations Dashboard
+            </h2>
+            <p class="text-muted mb-0 small">
+                Welcome back, <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>. Real-time overview of branch accounts, compliance, and customer activity.
+            </p>
         </div>
-    {% endfor %}
-{% endif %}
-
-<!-- 🔢 STATS -->
-<div class="row justify-content-center g-4 section">
-
-    <div class="col-lg-3 col-md-4 col-10">
-        <div class="card text-white shadow big-card text-center"
-             style="background: linear-gradient(135deg,#4CAF50,#2e7d32);">
-            <div class="stat-title">Total Accounts</div>
-            <div class="stat-value">{{ accounts }}</div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="badge bg-white text-dark border px-3 py-2 rounded-pill shadow-sm">
+                <i class="bi bi-clock me-1 text-primary"></i> {% now "D, d M Y" %}
+            </span>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill">
+                <i class="bi bi-shield-lock me-1"></i> {{ request.user.role }}
+            </span>
         </div>
     </div>
 
-    <div class="col-lg-3 col-md-4 col-10">
-        <div class="card text-white shadow big-card text-center"
-             style="background: linear-gradient(135deg,#2196F3,#1565c0);">
-            <div class="stat-title">Total Balance</div>
-            <div class="stat-value">₹{{ balance }}</div>
+    <!-- 🔔 Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-4 shadow-sm" role="alert">
+            <div class="d-flex align-items-center gap-2">
+                {% if message.tags == 'error' %}<i class="bi bi-exclamation-octagon-fill text-danger fs-5"></i>
+                {% elif message.tags == 'success' %}<i class="bi bi-check-circle-fill text-success fs-5"></i>
+                {% elif message.tags == 'warning' %}<i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                {% else %}<i class="bi bi-info-circle-fill text-info fs-5"></i>{% endif %}
+                <span>{{ message }}</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 🔢 Live Database Metric Cards -->
+    <div class="row g-3 mb-4">
+        <!-- Total Customers -->
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #0a192f, #1e3a8a); color: white;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Customers</span>
+                    <i class="bi bi-people-fill fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">{{ total_customers|default:"0" }}</div>
+                <span class="small opacity-75 mt-1 d-block">Registered users</span>
+            </div>
+        </div>
+
+        <!-- Active Accounts -->
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #065f46, #059669); color: white;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Active Accounts</span>
+                    <i class="bi bi-bank2 fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">{{ total_active_accounts|default:"0" }}</div>
+                <span class="small opacity-75 mt-1 d-block">{{ accounts|default:"0" }} total accounts</span>
+            </div>
+        </div>
+
+        <!-- Pending KYC -->
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #d97706, #b45309); color: white;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Pending KYC</span>
+                    <i class="bi bi-shield-exclamation fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">{{ pending_kyc|default:"0" }}</div>
+                <a href="{% url 'staff_kyc_queue' %}?status=PENDING" class="small text-white text-decoration-underline opacity-90 mt-1 d-block">
+                    Review submissions &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- Today's Deposits -->
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Today's Deposits</span>
+                    <i class="bi bi-arrow-down-circle-fill fs-5 opacity-75"></i>
+                </div>
+                <div class="h4 fw-bold mb-0 font-mono">₹{{ today_deposits|floatformat:2 }}</div>
+                <span class="small opacity-75 mt-1 d-block">Counter inflows</span>
+            </div>
+        </div>
+
+        <!-- Today's Withdrawals -->
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #e11d48, #be123c); color: white;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Today's Debits</span>
+                    <i class="bi bi-arrow-up-circle-fill fs-5 opacity-75"></i>
+                </div>
+                <div class="h4 fw-bold mb-0 font-mono">₹{{ today_withdrawals|floatformat:2 }}</div>
+                <span class="small opacity-75 mt-1 d-block">Counter outflows</span>
+            </div>
+        </div>
+
+        <!-- Pending Support -->
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card p-3 h-100 border-0 shadow-sm" style="background: linear-gradient(135deg, #4f46e5, #4338ca); color: white;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small opacity-75 text-uppercase fw-semibold">Open Support</span>
+                    <i class="bi bi-headset fs-5 opacity-75"></i>
+                </div>
+                <div class="h3 fw-bold mb-0 font-mono">{{ pending_tickets|default:"0" }}</div>
+                <a href="{% url 'staff_support_queue' %}" class="small text-white text-decoration-underline opacity-90 mt-1 d-block">
+                    View queue &rarr;
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="col-lg-3 col-md-4 col-10">
-        <div class="card text-white shadow big-card text-center"
-             style="background: linear-gradient(135deg,#FF9800,#ef6c00);">
-            <div class="stat-title">Total Loans</div>
-            <div class="stat-value">{{ loans }}</div>
+    <!-- 👤 My Operational Workload & Productivity -->
+    <div class="card p-3 p-md-4 mb-4 border-0 shadow-sm bg-white rounded-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0 text-dark text-uppercase small" style="letter-spacing: 0.5px;">
+                <i class="bi bi-person-workspace text-primary me-1"></i> My Operational Workload &amp; Activity
+            </h6>
+            <a href="{% url 'staff_activity_log' %}" class="small text-decoration-none fw-semibold">View My Full Activity Log &rarr;</a>
+        </div>
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_support_queue' %}?assigned=me" class="card p-3 h-100 bg-light border text-decoration-none text-dark rounded-3 hover-shadow">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted fw-semibold">My Assigned Tickets</span>
+                        <i class="bi bi-headset text-primary"></i>
+                    </div>
+                    <div class="h4 fw-bold font-mono text-primary mb-0">{{ my_pending_tickets }}</div>
+                    <span class="small text-muted mt-1 d-block">Pending my resolution</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_kyc_queue' %}" class="card p-3 h-100 bg-light border text-decoration-none text-dark rounded-3 hover-shadow">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted fw-semibold">My KYC Reviews</span>
+                        <i class="bi bi-shield-check text-warning"></i>
+                    </div>
+                    <div class="h4 fw-bold font-mono text-warning-emphasis mb-0">{{ my_kyc_reviews }}</div>
+                    <span class="small text-muted mt-1 d-block">Total verified by me</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_teller_history' %}" class="card p-3 h-100 bg-light border text-decoration-none text-dark rounded-3 hover-shadow">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted fw-semibold">My Teller Ops Today</span>
+                        <i class="bi bi-wallet2 text-success"></i>
+                    </div>
+                    <div class="h4 fw-bold font-mono text-success mb-0">{{ my_teller_operations_today }}</div>
+                    <span class="small text-muted mt-1 d-block">₹{{ my_teller_volume_today|floatformat:2 }} counter volume</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_loan_queue' %}" class="card p-3 h-100 bg-light border text-decoration-none text-dark rounded-3 hover-shadow">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted fw-semibold">My Underwriting Notes</span>
+                        <i class="bi bi-cash-stack text-info"></i>
+                    </div>
+                    <div class="h4 fw-bold font-mono text-info-emphasis mb-0">{{ my_loan_verifications }}</div>
+                    <span class="small text-muted mt-1 d-block">Loan recommendations</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚡ Quick Operations Toolbar -->
+    <div class="card p-3 p-md-4 mb-4 border-0 shadow-sm bg-white">
+        <h6 class="fw-bold mb-3 text-dark text-uppercase small" style="letter-spacing: 0.5px;">
+            <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Action Center
+        </h6>
+        <div class="row g-2 g-md-3">
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{% url 'staff_customer_list' %}" class="btn btn-outline-primary w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-person-search fs-4"></i>
+                    <span class="fw-semibold small">Find Customer</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{% url 'create_account' %}" class="btn btn-outline-success w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-person-plus fs-4"></i>
+                    <span class="fw-semibold small">Open Account</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{% url 'deposit' %}" class="btn btn-outline-info w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-box-arrow-in-down fs-4"></i>
+                    <span class="fw-semibold small">Cash Deposit</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{% url 'staff_withdraw' %}" class="btn btn-outline-danger w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-box-arrow-up fs-4"></i>
+                    <span class="fw-semibold small">Cash Withdraw</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{% url 'staff_kyc_queue' %}" class="btn btn-outline-warning w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-shield-check fs-4"></i>
+                    <span class="fw-semibold small">KYC Review</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+                <a href="{% url 'staff_support_queue' %}" class="btn btn-outline-secondary w-100 py-3 rounded-4 d-flex flex-column align-items-center gap-1 shadow-sm">
+                    <i class="bi bi-headset fs-4"></i>
+                    <span class="fw-semibold small">Support Desk</span>
+                </a>
+            </div>
+        </div>
+        <!-- Operational Report Shortcuts -->
+        <div class="row g-2 g-md-3 mt-1 border-top pt-3">
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_reports' %}" class="btn btn-outline-dark w-100 py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm">
+                    <i class="bi bi-graph-up-arrow text-primary"></i>
+                    <span class="fw-semibold small">Reports &amp; Analytics</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_activity_log' %}" class="btn btn-outline-dark w-100 py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm">
+                    <i class="bi bi-clock-history text-success"></i>
+                    <span class="fw-semibold small">Audit Logs</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_teller_export_csv' %}" class="btn btn-outline-dark w-100 py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm">
+                    <i class="bi bi-file-earmark-spreadsheet text-info"></i>
+                    <span class="fw-semibold small">Export Teller CSV</span>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a href="{% url 'staff_fd_export_csv' %}" class="btn btn-outline-dark w-100 py-2 rounded-3 d-flex align-items-center justify-content-center gap-2 shadow-sm">
+                    <i class="bi bi-piggy-bank text-warning"></i>
+                    <span class="fw-semibold small">Export FD CSV</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔍 Unified Customer / Account Search -->
+    <div class="card p-4 mb-4 border-0 shadow-sm bg-white">
+        <h5 class="fw-bold mb-3 text-dark">
+            <i class="bi bi-search text-primary me-2"></i>Customer &amp; Account Fast Lookup
+        </h5>
+        <form method="post" class="mb-0">
+            {% csrf_token %}
+            <div class="input-group input-group-lg">
+                <input type="text"
+                       name="account_number"
+                       value="{{ search_query }}"
+                       class="form-control"
+                       placeholder="Enter Account Number, Customer Username, Name, Phone, or Email..."
+                       required>
+                <button class="btn btn-primary px-4 fw-semibold" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+            </div>
+            <div class="form-text mt-2 text-muted">
+                Quickly locate an account ledger or customer record for counter operations, profile updates, or inquiries.
+            </div>
+        </form>
+
+        <!-- Matched Customer List if Multiple Matches -->
+        {% if customer_matches and not account %}
+        <div class="mt-4 pt-3 border-top">
+            <h6 class="fw-bold text-dark mb-3">Matching Customer Records:</h6>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Customer</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>KYC</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in customer_matches %}
+                        <tr>
+                            <td class="fw-bold">{{ c.get_full_name|default:c.username }}</td>
+                            <td><code>{{ c.username }}</code></td>
+                            <td>{{ c.email|default:"-" }}</td>
+                            <td class="font-mono">{{ c.phone|default:"-" }}</td>
+                            <td>
+                                {% if c.kyc_status == 'APPROVED' %}
+                                <span class="badge bg-success-subtle text-success">Verified</span>
+                                {% elif c.kyc_status == 'PENDING' %}
+                                <span class="badge bg-warning-subtle text-warning">Pending</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary">{{ c.kyc_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'staff_customer_detail' c.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    View 360° &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 📄 ACCOUNT DETAILS CARD (If Account Located) -->
+    {% if account %}
+    <div class="card p-4 mb-4 border-0 shadow-sm bg-white" id="account-result">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center pb-3 mb-3 border-bottom gap-2">
+            <div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 mb-1">
+                    <i class="bi bi-check2-circle me-1"></i> Account Record Found
+                </span>
+                <h4 class="fw-bold mb-0 text-dark">
+                    Account: <span class="font-mono">{{ account.account_number }}</span>
+                </h4>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                {% if account.user %}
+                <a href="{% url 'staff_customer_detail' account.user.id %}" class="btn btn-primary btn-sm px-3 rounded-pill" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                    <i class="bi bi-person-lines-fill me-1"></i> View 360° Profile
+                </a>
+                <a href="{% url 'staff_customer_profile_edit' account.user.id %}" class="btn btn-outline-primary btn-sm px-3 rounded-pill">
+                    <i class="bi bi-pencil-square me-1"></i> Edit Profile
+                </a>
+                {% endif %}
+                <a href="{% url 'deposit' %}?account_number={{ account.account_number }}" class="btn btn-outline-success btn-sm px-3 rounded-pill">
+                    <i class="bi bi-plus-circle me-1"></i> Deposit
+                </a>
+                <a href="{% url 'staff_withdraw' %}?account_number={{ account.account_number }}" class="btn btn-outline-danger btn-sm px-3 rounded-pill">
+                    <i class="bi bi-dash-circle me-1"></i> Withdraw
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 bg-light rounded-3">
+                    <div class="small text-muted mb-1">Customer Username</div>
+                    <div class="fw-bold text-dark font-mono">{{ account.user.username|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 bg-light rounded-3">
+                    <div class="small text-muted mb-1">Account Type</div>
+                    <div class="fw-bold text-dark"><span class="badge bg-secondary-subtle text-dark border">{{ account.account_type }}</span></div>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 bg-success-subtle rounded-3">
+                    <div class="small text-success mb-1 fw-semibold">Current Balance</div>
+                    <div class="h4 fw-bold text-success mb-0 font-mono">₹{{ account.balance }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 bg-light rounded-3">
+                    <div class="small text-muted mb-1">Email Address</div>
+                    <div class="fw-semibold text-dark">{{ account.email|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 bg-light rounded-3">
+                    <div class="small text-muted mb-1">Phone Number</div>
+                    <div class="fw-semibold text-dark font-mono">{{ account.phone|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 bg-light rounded-3">
+                    <div class="small text-muted mb-1">Pincode</div>
+                    <div class="fw-semibold text-dark font-mono">{{ account.pincode|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="p-3 bg-light rounded-3">
+                    <div class="small text-muted mb-1">Postal Address</div>
+                    <div class="fw-semibold text-dark">{{ account.address|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="col-12 text-muted small mt-2">
+                <i class="bi bi-calendar3 me-1"></i> Account Opened: <span class="font-mono">{{ account.created_at|date:"d M Y, H:i" }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 📊 Operational Activity Feeds -->
+    <div class="row g-4">
+        <!-- Recent Transactions -->
+        <div class="col-lg-7">
+            <div class="card p-4 border-0 shadow-sm bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-clock-history text-primary me-2"></i>Recent Banking Ledger Activity
+                    </h5>
+                    <span class="badge bg-light text-secondary border">Live</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small">
+                            <tr>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Date &amp; Time</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            {% for tx in recent_transactions %}
+                            <tr>
+                                <td class="font-mono fw-semibold text-dark">{{ tx.account.account_number }}</td>
+                                <td>
+                                    {% if tx.transaction_type == 'DEPOSIT' %}
+                                    <span class="badge bg-success-subtle text-success">DEPOSIT</span>
+                                    {% elif tx.transaction_type == 'WITHDRAW' %}
+                                    <span class="badge bg-danger-subtle text-danger">WITHDRAW</span>
+                                    {% elif tx.transaction_type == 'TRANSFER' %}
+                                    <span class="badge bg-primary-subtle text-primary">TRANSFER</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary">{{ tx.transaction_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="font-mono fw-bold {% if tx.transaction_type == 'DEPOSIT' %}text-success{% else %}text-danger{% endif %}">
+                                    ₹{{ tx.amount }}
+                                </td>
+                                <td class="text-muted font-mono">{{ tx.created_at|date:"d M, H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-3">No recent transaction entries.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent KYC Reviews & Compliance -->
+        <div class="col-lg-5">
+            <div class="card p-4 border-0 shadow-sm bg-white h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-shield-check text-success me-2"></i>Recent KYC Compliance Reviews
+                    </h5>
+                    <a href="{% url 'staff_kyc_queue' %}" class="small text-decoration-none fw-semibold">View Queue &rarr;</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for k in recent_kyc_reviews %}
+                    <div class="list-group-item px-0 py-2 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="fw-bold text-dark">{{ k.username }}</span>
+                                <span class="text-muted small ms-1 font-mono">({{ k.get_simulated_id_type_display|default:k.simulated_id_type|default:"ID" }})</span>
+                            </div>
+                            <div>
+                                {% if k.kyc_status == 'APPROVED' %}
+                                <span class="badge bg-success-subtle text-success">Approved</span>
+                                {% elif k.kyc_status == 'REJECTED' %}
+                                <span class="badge bg-danger-subtle text-danger">Rejected</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary">{{ k.kyc_status }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mt-1">
+                            <span>Reviewed by: <strong>{{ k.kyc_reviewed_by.username|default:"Staff" }}</strong></span>
+                            <span class="font-mono">{{ k.kyc_reviewed_at|date:"d M, H:i" }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center text-muted py-4">No recent KYC compliance actions.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📋 My Recent Officer Activity -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-journal-text text-primary me-2"></i>My Recent Operational Activity
+            </h5>
+            <a href="{% url 'staff_activity_log' %}" class="small text-decoration-none fw-semibold">View All Activity &rarr;</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="py-2" style="font-size: 12px;">Timestamp</th>
+                        <th style="font-size: 12px;">Action Type</th>
+                        <th style="font-size: 12px;">Target / Customer</th>
+                        <th style="font-size: 12px;">Operational Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for act in my_recent_actions %}
+                    <tr>
+                        <td class="font-mono small text-muted text-nowrap">{{ act.created_at|date:"Y-m-d H:i" }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ act.get_action_type_display }}</span></td>
+                        <td>
+                            {% if act.customer %}
+                            <strong class="text-dark">{{ act.customer.username }}</strong>
+                            {% elif act.account_number %}
+                            <span class="font-mono text-muted">A/C: {{ act.account_number }}</span>
+                            {% elif act.target_id %}
+                            <span class="font-mono text-muted">{{ act.target_id }}</span>
+                            {% else %}
+                            <span class="text-muted">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td class="small text-dark">{{ act.description }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-3 text-muted small">No recent activity recorded yet today.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
 </div>
-
-<!-- 🔍 SEARCH -->
-<div class="card shadow p-4 section search-box">
-
-    <h4 class="mb-3 text-center fw-bold">🔍 Search Account</h4>
-
-    <form method="post">
-        {% csrf_token %}
-
-        <div class="input-group">
-            <input type="text"
-                   name="account_number"
-                   class="form-control form-control-lg"
-                   placeholder="Enter Account Number"
-                   required>
-
-            <button class="btn btn-dark px-4">
-                Search
-            </button>
-        </div>
-
-    </form>
-
-</div>
-
-<!-- 📄 ACCOUNT DETAILS -->
-{% if account %}
-<div class="card shadow big-card section details-box">
-
-    <h4 class="mb-4 text-center fw-bold">📄 Account Details</h4>
-
-    <div class="row">
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Account Number</div>
-            <div class="value">{{ account.account_number }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Customer Name</div>
-            <div class="value">{{ account.user.username }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Account Type</div>
-            <div class="value">{{ account.account_type }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Balance</div>
-            <div class="value text-success fw-bold">₹{{ account.balance }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Email</div>
-            <div class="value">{{ account.email|default:"-" }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Phone</div>
-            <div class="value">{{ account.phone|default:"-" }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Aadhaar</div>
-            <div class="value">{{ account.aadhaar|default:"-" }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">PAN</div>
-            <div class="value">{{ account.pan|default:"-" }}</div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="label">Pincode</div>
-            <div class="value">{{ account.pincode|default:"-" }}</div>
-        </div>
-
-        <div class="col-12 mb-3">
-            <div class="label">Address</div>
-            <div class="value">{{ account.address|default:"-" }}</div>
-        </div>
-
-        <div class="col-12 text-center text-muted mt-3">
-            Created: {{ account.created_at|date:"d M Y H:i" }}
-        </div>
-
-    </div>
-
-</div>
-{% endif %}
-
-</div>
-
 {% endblock %}

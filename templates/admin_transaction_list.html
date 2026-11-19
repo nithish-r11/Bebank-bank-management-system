@@ -1,0 +1,252 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Global Transaction Monitoring — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Header & Action Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Ledger Surveillance
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Global Transaction Monitoring
+            </h3>
+            <p class="text-muted small mb-0">Centralized surveillance of all core banking ledger postings, transfers, teller counters &amp; settlements.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+            <a href="{% url 'admin_reconciliation' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-check2-square me-1"></i> Ledger Reconciliation
+            </a>
+            <a href="{% url 'admin_risk_monitoring' %}" class="btn btn-outline-warning text-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-shield-exclamation me-1"></i> Risk Monitoring
+            </a>
+            <a href="{% url 'admin_transaction_export_csv' %}?q={{ query }}&type={{ selected_type }}&direction={{ selected_direction }}&date_from={{ date_from }}&date_to={{ date_to }}&account={{ selected_account }}" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filter & Search Card -->
+    <div class="card p-3 p-md-4 mb-4 border shadow-sm rounded-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <!-- Search Query -->
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Search Transactions</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control bg-light border-start-0" placeholder="Reference, A/C #, @username, name...">
+                </div>
+            </div>
+
+            <!-- Transaction Type Filter -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Transaction Type</label>
+                <select name="type" class="form-select bg-light">
+                    <option value="" {% if not selected_type %}selected{% endif %}>All Types</option>
+                    {% for code, label in type_choices %}
+                    <option value="{{ code }}" {% if selected_type == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Flow Direction Filter -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Ledger Flow</label>
+                <select name="direction" class="form-select bg-light">
+                    <option value="" {% if not selected_direction %}selected{% endif %}>All Directions</option>
+                    <option value="credit" {% if selected_direction == 'credit' %}selected{% endif %}>Credit Inflow (+)</option>
+                    <option value="debit" {% if selected_direction == 'debit' %}selected{% endif %}>Debit Outflow (-)</option>
+                </select>
+            </div>
+
+            <!-- Date From -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Date From</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control bg-light">
+            </div>
+
+            <!-- Date To -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Date To</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control bg-light">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="col-12 col-md-1 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 rounded-3" title="Apply Filters">
+                    Filter
+                </button>
+                {% if query or selected_type or selected_direction or date_from or date_to or selected_account %}
+                <a href="{% url 'admin_transaction_list' %}" class="btn btn-outline-secondary rounded-3" title="Clear Filters">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Telemetry Strip -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 px-1 text-muted small">
+        <div>
+            <span>Showing <strong>{{ page_obj.paginator.count }}</strong> recorded transactions in filter scope</span>
+            {% if total_volume %}
+            &bull; <span>Volume in Filter: <strong class="font-mono text-dark">₹{{ total_volume|floatformat:2 }}</strong></span>
+            {% endif %}
+        </div>
+        <div class="font-mono" style="font-size: 0.74rem;">
+            <i class="bi bi-shield-check text-success me-1"></i> Immutable Double-Entry Ledger
+        </div>
+    </div>
+
+    <!-- Transaction Table Card -->
+    <div class="card border shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-muted small text-uppercase">
+                        <th class="ps-3">Reference &amp; Date</th>
+                        <th>Account Holder</th>
+                        <th>Account</th>
+                        <th>Type &amp; Direction</th>
+                        <th>Amount</th>
+                        <th>Balance Snapshot</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in page_obj %}
+                    <tr>
+                        <td class="ps-3">
+                            <a href="{% url 'admin_transaction_detail' tx.id %}" class="font-mono fw-bold text-dark text-decoration-none d-block">
+                                {% if tx.reference_id %}
+                                    {{ tx.reference_id }}
+                                {% else %}
+                                    #TX-{{ tx.id }}
+                                {% endif %}
+                            </a>
+                            <span class="font-mono text-muted small">{{ tx.created_at|date:"Y-m-d H:i:s" }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 32px; height: 32px; background: #0284c7; font-size: 0.8rem;">
+                                    {{ tx.account.user.first_name|first|default:tx.account.user.username|first|upper }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'admin_customer_detail' tx.account.user.id %}" class="fw-bold text-dark text-decoration-none d-block small">
+                                        {{ tx.account.user.get_full_name|default:tx.account.user.username }}
+                                    </a>
+                                    <span class="font-mono text-muted small">@{{ tx.account.user.username }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <a href="{% url 'admin_account_detail' tx.account.id %}" class="font-mono fw-bold text-dark text-decoration-none">
+                                #••••{{ tx.account.account_number|slice:"-4:" }}
+                            </a>
+                            <div class="text-muted small" style="font-size: 0.72rem;">{{ tx.account.get_account_type_display|default:tx.account.account_type }}</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border small d-inline-block mb-1">
+                                {{ tx.get_transaction_type_display|default:tx.transaction_type }}
+                            </span>
+                            <div>
+                                {% if tx.is_credit %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small" style="font-size: 0.7rem;">
+                                        <i class="bi bi-arrow-down-left me-1"></i> CREDIT
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill small" style="font-size: 0.7rem;">
+                                        <i class="bi bi-arrow-up-right me-1"></i> DEBIT
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="font-mono fw-bold {% if tx.is_credit %}text-success{% else %}text-danger{% endif %} fs-6">
+                                {% if tx.is_credit %}+{% else %}-{% endif %}₹{{ tx.amount|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if tx.balance_before is not None and tx.balance_after is not None %}
+                                <div class="font-mono small text-muted">
+                                    ₹{{ tx.balance_before|floatformat:2 }} &rarr;
+                                    <span class="fw-semibold text-dark">₹{{ tx.balance_after|floatformat:2 }}</span>
+                                </div>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-muted rounded-pill small">N/A (Legacy)</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'admin_transaction_detail' tx.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                <i class="bi bi-eye me-1"></i> 360&deg; Detail
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-receipt fs-1 d-block mb-2 text-secondary"></i>
+                            <h6 class="fw-bold mb-1">No transactions found</h6>
+                            <p class="small mb-0">No ledger transactions match your current search or filter criteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="p-3 border-top d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} records
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&type={{ selected_type }}&direction={{ selected_direction }}&date_from={{ date_from }}&date_to={{ date_to }}&account={{ selected_account }}">&laquo;</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ query }}&type={{ selected_type }}&direction={{ selected_direction }}&date_from={{ date_from }}&date_to={{ date_to }}&account={{ selected_account }}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ query }}&type={{ selected_type }}&direction={{ selected_direction }}&date_from={{ date_from }}&date_to={{ date_to }}&account={{ selected_account }}">&raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

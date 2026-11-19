@@ -1,0 +1,270 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Virtual Debit Card Governance — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Header & Action Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Card Infrastructure
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Virtual Debit Card Governance
+            </h3>
+            <p class="text-muted small mb-0">Surveillance, emergency administrative blocking/unblocking &amp; compliance management for simulation debit cards.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            <a href="{% url 'admin_account_list' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-wallet2 me-1"></i> Accounts Directory
+            </a>
+            <a href="{% url 'admin_customer_list' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-people me-1"></i> Customers Directory
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top KPI Telemetry Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4 bg-light">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Total Cards Issued</span>
+                <h4 class="fw-bold font-mono text-dark mb-0">{{ counts.total_cards }}</h4>
+                <span class="text-muted small" style="font-size: 0.72rem;">All virtual card instruments</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Active Cards</span>
+                <h4 class="fw-bold font-mono text-success mb-0">{{ counts.active_cards }}</h4>
+                <span class="text-success small fw-medium" style="font-size: 0.72rem;">Operational &amp; usable</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Blocked Cards</span>
+                <h4 class="fw-bold font-mono text-danger mb-0">{{ counts.blocked_cards }}</h4>
+                <span class="text-danger small fw-medium" style="font-size: 0.72rem;">Admin or customer suspended</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Expired / Cancelled</span>
+                <h4 class="fw-bold font-mono text-dark mb-0">{{ counts.other_cards }}</h4>
+                <span class="text-muted small" style="font-size: 0.72rem;">Inactive or terminated</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar Card -->
+    <div class="card p-3 p-md-4 mb-4 border shadow-sm rounded-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <!-- Search Query -->
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-muted">Search Cards</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control bg-light border-start-0" placeholder="Last 4 digits, A/C #, customer @username, name...">
+                </div>
+            </div>
+
+            <!-- Card Type Filter -->
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Card Type</label>
+                <select name="card_type" class="form-select bg-light">
+                    <option value="" {% if not selected_type %}selected{% endif %}>All Types</option>
+                    <option value="CLASSIC" {% if selected_type == 'CLASSIC' %}selected{% endif %}>Classic Simulation</option>
+                    <option value="PLATINUM" {% if selected_type == 'PLATINUM' %}selected{% endif %}>Platinum Simulation</option>
+                    <option value="VIRTUAL_ACCESS" {% if selected_type == 'VIRTUAL_ACCESS' %}selected{% endif %}>Virtual Access Simulation</option>
+                </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Card Status</label>
+                <select name="status" class="form-select bg-light">
+                    <option value="" {% if not selected_status %}selected{% endif %}>All Statuses</option>
+                    <option value="ACTIVE" {% if selected_status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                    <option value="BLOCKED" {% if selected_status == 'BLOCKED' %}selected{% endif %}>Blocked</option>
+                    <option value="EXPIRED" {% if selected_status == 'EXPIRED' %}selected{% endif %}>Expired</option>
+                    <option value="CANCELLED" {% if selected_status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold rounded-3">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                <a href="{% url 'admin_card_list' %}" class="btn btn-outline-secondary rounded-3" title="Clear Filters">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Cards Table Card -->
+    <div class="card border shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+            <span class="fw-bold text-dark mb-0">
+                <i class="bi bi-credit-card-2-front text-primary me-2"></i>Virtual Card Registry
+            </span>
+            <span class="badge bg-secondary-subtle text-muted rounded-pill font-mono px-3 py-1">
+                Showing {{ page_obj.start_index|default:0 }}–{{ page_obj.end_index|default:0 }} of {{ paginator.count }}
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-4">Card Identifier</th>
+                        <th>Cardholder &amp; Account</th>
+                        <th>Card Type</th>
+                        <th>Expiry</th>
+                        <th>Daily Limit</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for card in page_obj %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="p-2 rounded-3 bg-light border text-primary">
+                                    <i class="bi bi-credit-card fs-5"></i>
+                                </span>
+                                <div>
+                                    <span class="font-mono fw-bold text-dark d-block" style="letter-spacing: 1px;">
+                                        {{ card.masked_card_number }}
+                                    </span>
+                                    <span class="badge bg-secondary-subtle text-secondary font-mono" style="font-size: 0.65rem;">
+                                        ID #{{ card.id }} &bull; SIMULATION
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ card.cardholder_name }}</div>
+                            <div class="small font-mono text-muted">
+                                @{{ card.user.username }} &bull; A/C #••••{{ card.account.account_number|slice:"-4:" }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border font-mono small">
+                                {{ card.get_card_type_display|default:card.card_type }}
+                            </span>
+                        </td>
+                        <td class="font-mono small">
+                            <span class="{% if card.is_expired %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                                {{ card.expiry_display }}
+                            </span>
+                            {% if card.is_expired %}
+                            <span class="badge bg-danger-subtle text-danger ms-1" style="font-size: 0.65rem;">EXPIRED</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-mono small fw-semibold">
+                            ₹{{ card.daily_limit|floatformat:2 }}
+                        </td>
+                        <td>
+                            {% if card.status == 'ACTIVE' %}
+                                {% if card.is_expired %}
+                                    <span class="badge bg-danger rounded-pill font-mono">EXPIRED</span>
+                                {% else %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-mono">ACTIVE</span>
+                                {% endif %}
+                            {% elif card.status == 'BLOCKED' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-mono">
+                                    BLOCKED {% if card.blocked_by_admin %}(ADMIN){% endif %}
+                                </span>
+                            {% elif card.status == 'EXPIRED' %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill font-mono">EXPIRED</span>
+                            {% elif card.status == 'CANCELLED' %}
+                                <span class="badge bg-dark rounded-pill font-mono">CANCELLED</span>
+                            {% else %}
+                                <span class="badge bg-secondary rounded-pill font-mono">{{ card.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="{% url 'admin_card_detail' card.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                                Manage <i class="bi bi-chevron-right ms-1"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="bi bi-credit-card-2-front text-muted mb-3 d-block" style="font-size: 2.5rem;"></i>
+                            <h6 class="fw-bold text-dark">No Virtual Debit Cards Found</h6>
+                            <p class="text-muted small mb-0">No virtual cards match your search or filter parameters.</p>
+                            {% if query or selected_type or selected_status %}
+                            <a href="{% url 'admin_card_list' %}" class="btn btn-outline-primary btn-sm rounded-pill mt-3 px-3">
+                                Clear Filters
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if paginator.num_pages > 1 %}
+        <div class="card-footer bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_type %}&card_type={{ selected_type }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">Previous</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                {% endif %}
+
+                {% for num in paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if selected_type %}&card_type={{ selected_type }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_type %}&card_type={{ selected_type }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}">Next</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer Support &amp; Helpdesk — BEBANK</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="/static/images/bebank_b_monogram.svg">
+
+<style>
+body {
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0f172a;
+    padding-bottom: 90px;
+}
+.card {
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(10, 25, 47, 0.05);
+}
+.font-mono {
+    font-family: 'Consolas', 'SF Mono', 'Courier New', monospace;
+}
+.btn-primary-navy {
+    background: #0a192f;
+    border-color: #0a192f;
+    color: #ffffff;
+    font-weight: 600;
+}
+.btn-primary-navy:hover {
+    background: #112240;
+    border-color: #112240;
+    color: #ffffff;
+}
+.ticket-row {
+    transition: background 0.15s ease;
+}
+.ticket-row:hover {
+    background: #f1f5f9;
+}
+</style>
+</head>
+
+<body>
+<div class="container mt-4" style="max-width: 960px;">
+
+    <!-- Top Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'customer_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-2">
+                <i class="bi bi-arrow-left"></i> Dashboard
+            </a>
+            <h4 class="d-inline-block align-middle mb-0 fw-bold text-dark">
+                <i class="bi bi-headset text-primary me-2"></i>Customer Support &amp; Helpdesk
+            </h4>
+        </div>
+        <a href="{% url 'support_ticket_create' %}" class="btn btn-primary-navy btn-sm rounded-pill px-3 shadow-sm">
+            <i class="bi bi-plus-lg"></i> New Support Ticket
+        </a>
+    </div>
+
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filter Bar -->
+    <div class="card p-3 mb-4 bg-white">
+        <form method="GET" action="{% url 'support_ticket_list' %}" class="row g-2 align-items-center">
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <a href="?{% if selected_category %}category={{ selected_category }}{% endif %}"
+                   class="btn btn-sm rounded-pill {% if not selected_status %}btn-primary-navy{% else %}btn-outline-secondary{% endif %}">
+                    All Tickets
+                </a>
+                <a href="?status=OPEN{% if selected_category %}&amp;category={{ selected_category }}{% endif %}"
+                   class="btn btn-sm rounded-pill {% if selected_status == 'OPEN' %}btn-primary-navy{% else %}btn-outline-secondary{% endif %}">
+                    Open
+                </a>
+                <a href="?status=IN_PROGRESS{% if selected_category %}&amp;category={{ selected_category }}{% endif %}"
+                   class="btn btn-sm rounded-pill {% if selected_status == 'IN_PROGRESS' %}btn-primary-navy{% else %}btn-outline-secondary{% endif %}">
+                    In Progress
+                </a>
+                <a href="?status=RESOLVED{% if selected_category %}&amp;category={{ selected_category }}{% endif %}"
+                   class="btn btn-sm rounded-pill {% if selected_status == 'RESOLVED' %}btn-primary-navy{% else %}btn-outline-secondary{% endif %}">
+                    Resolved
+                </a>
+            </div>
+
+            <div class="col-12 col-md-auto ms-md-auto">
+                <input type="hidden" name="status" value="{{ selected_status }}">
+                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Categories</option>
+                    {% for code, label in category_choices %}
+                    <option value="{{ code }}" {% if selected_category == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tickets List -->
+    {% if tickets %}
+    <div class="card bg-white shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 py-3" style="font-size: 13px;">Ticket ID</th>
+                        <th style="font-size: 13px;">Subject &amp; Category</th>
+                        <th style="font-size: 13px;">Priority</th>
+                        <th style="font-size: 13px;">Status</th>
+                        <th style="font-size: 13px;">Last Activity</th>
+                        <th class="text-end pe-3" style="font-size: 13px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tickets %}
+                    <tr class="ticket-row">
+                        <td class="ps-3 py-3">
+                            <span class="font-mono fw-bold text-dark" style="font-size: 13px;">{{ t.ticket_number }}</span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ t.subject }}</div>
+                            <span class="badge bg-light text-muted border" style="font-size: 11px;">
+                                {{ t.get_category_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if t.priority == 'URGENT' %}
+                            <span class="badge bg-danger">Urgent</span>
+                            {% elif t.priority == 'HIGH' %}
+                            <span class="badge bg-warning text-dark">High</span>
+                            {% elif t.priority == 'MEDIUM' %}
+                            <span class="badge bg-primary-subtle text-primary border">Medium</span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border">Low</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.status == 'OPEN' %}
+                            <span class="badge bg-primary">Open</span>
+                            {% elif t.status == 'IN_PROGRESS' %}
+                            <span class="badge bg-info text-dark">In Progress</span>
+                            {% elif t.status == 'WAITING_FOR_CUSTOMER' %}
+                            <span class="badge bg-warning text-dark">Awaiting Your Reply</span>
+                            {% elif t.status == 'RESOLVED' %}
+                            <span class="badge bg-success">Resolved</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Closed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-muted small">{{ t.updated_at|date:"d M Y, H:i" }}</span>
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'support_ticket_detail' t.id %}" class="btn btn-outline-dark btn-sm rounded-pill px-3">
+                                View &rarr;
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4" aria-label="Ticket pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_status %}&amp;status={{ selected_status }}{% endif %}{% if selected_category %}&amp;category={{ selected_category }}{% endif %}">&laquo; Previous</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link bg-dark border-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_status %}&amp;status={{ selected_status }}{% endif %}{% if selected_category %}&amp;category={{ selected_category }}{% endif %}">Next &raquo;</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="card p-5 text-center bg-white">
+        <div class="mb-3">
+            <i class="bi bi-chat-dots text-muted" style="font-size: 48px;"></i>
+        </div>
+        <h5 class="fw-bold">No Support Tickets Found</h5>
+        <p class="text-muted small mb-3">You don't have any active inquiries or complaints matching your criteria.</p>
+        <div>
+            <a href="{% url 'support_ticket_create' %}" class="btn btn-primary-navy rounded-pill px-4">
+                Open a Support Ticket
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Bottom Navigation Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="support" %}
+
+{% include "includes/submit_guard.html" %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

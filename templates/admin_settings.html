@@ -1,0 +1,204 @@
+{% extends "base_admin.html" %}
+
+{% block title %}System Settings &amp; Security Diagnostics — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Back & Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    System Diagnostics
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                System Settings &amp; Security Diagnostics
+            </h3>
+            <p class="text-muted small mb-0">Platform runtime parameters, cryptographic validators, database health &amp; compliance settings.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            <a href="{% url 'admin_backup' %}" class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-database-check me-1"></i> Backup &amp; Recovery
+            </a>
+            <a href="{% url 'admin_audit_log' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-shield-check me-1"></i> Audit Surveillance
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- LIVE HEALTH CHECK ROW -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Database Connectivity</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success text-white rounded-pill font-mono">CONNECTED</span>
+                    <span class="font-mono small text-success fw-bold">{{ db_latency_ms }} ms</span>
+                </div>
+                <span class="text-success small mt-1 d-block" style="font-size: 0.72rem;">SQLite Local Storage</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Migrations State</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary text-white rounded-pill font-mono">SYNCHRONIZED</span>
+                </div>
+                <span class="text-primary small mt-1 d-block" style="font-size: 0.72rem;">All schema migrations applied</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Lockout Policy</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-mono">3 ATTEMPTS</span>
+                </div>
+                <span class="text-muted small mt-1 d-block" style="font-size: 0.72rem;">Automated account lock</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #fffdfa 0%, #fef3c7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Security Diagnostics</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning text-dark rounded-pill font-mono">READ-ONLY</span>
+                </div>
+                <span class="text-muted small mt-1 d-block" style="font-size: 0.72rem;">Immutable diagnostic parameters</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- 1. Environment & Runtime -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                    <i class="bi bi-cpu text-primary me-2"></i>Platform Runtime &amp; Database Architecture
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless align-middle mb-0 small">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted py-2">Framework &amp; Version:</td>
+                                <td class="font-mono fw-semibold text-dark py-2">{{ django_version }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Python Runtime:</td>
+                                <td class="font-mono fw-semibold text-dark py-2">{{ python_version }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Operating Platform:</td>
+                                <td class="font-mono text-dark py-2">{{ platform_name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Database Engine:</td>
+                                <td class="font-mono fw-semibold text-dark py-2">{{ db_engine }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">SQLite Library Version:</td>
+                                <td class="font-mono text-dark py-2">{{ sqlite_version }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Database Location:</td>
+                                <td class="font-mono text-muted text-truncate py-2" style="max-width: 250px;" title="{{ db_name }}">{{ db_name }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Active Server Timezone:</td>
+                                <td class="font-mono fw-semibold text-dark py-2">{{ timezone_name }} (USE_TZ={{ use_tz }})</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Debug Mode:</td>
+                                <td class="py-2">
+                                    <span class="badge {% if debug_mode %}bg-warning-subtle text-warning-emphasis{% else %}bg-success-subtle text-success{% endif %} rounded-pill font-mono">
+                                        {{ debug_mode|yesno:"Enabled (Development),Disabled (Production)" }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Security & Cryptographic Policies -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                    <i class="bi bi-shield-check text-success me-2"></i>Security Policies &amp; Cryptography
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless align-middle mb-0 small">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted py-2">Default Password Hasher:</td>
+                                <td class="font-mono fw-semibold text-dark py-2">{{ password_hasher }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2 align-top">Active Password Validators:</td>
+                                <td class="py-2">
+                                    <ul class="list-unstyled mb-0 font-mono text-muted" style="font-size: 0.75rem;">
+                                        {% for validator in password_validators %}
+                                        <li><i class="bi bi-check2 text-success me-1"></i>{{ validator }}</li>
+                                        {% empty %}
+                                        <li>Standard Django Validators</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Max Login Failure Tolerance:</td>
+                                <td class="font-mono fw-bold text-danger py-2">3 failed attempts (Sets account_locked=True)</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">CSRF Cookie Protection:</td>
+                                <td class="text-success font-mono py-2"><i class="bi bi-check-circle-fill me-1"></i>HTTPOnly={{ csrf_httponly }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Session Cookie Expiry:</td>
+                                <td class="font-mono text-dark py-2">{{ session_cookie_age }} seconds (HTTPOnly={{ session_httponly }})</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Double-Entry Ledger Invariant:</td>
+                                <td class="text-success font-mono py-2"><i class="bi bi-check-circle-fill me-1"></i>Symmetric two-leg balance snapshots</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Teller Idempotency Protection:</td>
+                                <td class="text-success font-mono py-2"><i class="bi bi-check-circle-fill me-1"></i>UUIDv4 token + SHA-256 payload hash</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Security Invariant Notice -->
+    <div class="alert alert-light border rounded-4 p-3 small text-muted">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-shield-lock-fill text-danger fs-4"></i>
+            <div>
+                <strong class="text-dark d-block">Security Invariant &amp; Secret Isolation Policy</strong>
+                Application secrets (including <code>SECRET_KEY</code>, system environment variables, database credentials, and session tokens) are strictly excluded from diagnostics display and cannot be edited dynamically via web interfaces.
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

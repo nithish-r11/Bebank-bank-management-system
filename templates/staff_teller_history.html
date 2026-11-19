@@ -1,0 +1,178 @@
+{% extends "base_employee.html" %}
+
+{% block title %}Teller Operations History &amp; Audit — BEBANK Staff Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3" style="max-width: 1200px; margin: 0 auto;">
+
+    <!-- Back & Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <a href="{% url 'staff_operations' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-2">
+                <i class="bi bi-arrow-left me-1"></i> Account Operations
+            </a>
+            <h3 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-journal-text text-primary me-2"></i>Teller Operations History &amp; Audit Log
+            </h3>
+            <p class="text-muted small mb-0">Complete auditable trail of all branch counter operations, deposits, and disbursements.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'staff_teller_export_csv' %}?date_from={{ date_from }}&date_to={{ date_to }}&op_type={{ op_type }}&q={{ q }}" class="btn btn-outline-success btn-sm px-3 py-2 rounded-pill fw-semibold">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Filtered CSV
+            </a>
+            <a href="{% url 'staff_operations' %}" class="btn btn-primary btn-sm px-3 py-2 rounded-pill" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                <i class="bi bi-wallet2 me-1"></i> Operations Hub
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card p-3 p-md-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <form method="GET" class="row g-3 align-items-end">
+
+            <div class="col-md-3 col-6">
+                <label class="form-label fw-bold small text-muted text-uppercase">From Date</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+            </div>
+
+            <div class="col-md-3 col-6">
+                <label class="form-label fw-bold small text-muted text-uppercase">To Date</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+            </div>
+
+            <div class="col-md-3 col-6">
+                <label class="form-label fw-bold small text-muted text-uppercase">Operation Type</label>
+                <select name="op_type" class="form-select">
+                    <option value="ALL" {% if op_type == 'ALL' or not op_type %}selected{% endif %}>All Operations</option>
+                    <option value="ACCOUNT_OPENED" {% if op_type == 'ACCOUNT_OPENED' %}selected{% endif %}>Account Opened</option>
+                    <option value="DEPOSIT" {% if op_type == 'DEPOSIT' %}selected{% endif %}>Cash Deposit</option>
+                    <option value="WITHDRAWAL" {% if op_type == 'WITHDRAWAL' %}selected{% endif %}>Cash Withdrawal</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 col-6">
+                <label class="form-label fw-bold small text-muted text-uppercase">Search</label>
+                <div class="input-group">
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Ref, Acc, User...">
+                    <button type="submit" class="btn btn-primary px-3" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            {% if date_from or date_to or op_type != 'ALL' and op_type or q %}
+            <div class="col-12 pt-1">
+                <a href="{% url 'staff_teller_history' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-x-circle me-1"></i> Clear Filters
+                </a>
+                <span class="small text-muted ms-2">
+                    Found <strong>{{ total_count }}</strong> matching record{{ total_count|pluralize }} &bull; Total Volume: <strong>₹{{ total_volume|floatformat:2 }}</strong>
+                </span>
+            </div>
+            {% endif %}
+
+        </form>
+    </div>
+
+    <!-- History Table Card -->
+    <div class="card border-0 shadow-sm bg-white rounded-4 p-4 mb-4">
+        {% if page_obj %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="small text-muted text-uppercase">
+                        <th>Timestamp</th>
+                        <th>Operation</th>
+                        <th>Reference ID</th>
+                        <th>Officer</th>
+                        <th>Customer / Account</th>
+                        <th class="text-end">Amount</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for op in page_obj %}
+                    <tr>
+                        <td class="small text-muted text-nowrap">{{ op.created_at|date:"d M Y, H:i" }}</td>
+                        <td>
+                            {% if op.operation_type == 'DEPOSIT' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                                <i class="bi bi-arrow-down-left me-1"></i> Deposit
+                            </span>
+                            {% elif op.operation_type == 'WITHDRAWAL' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                                <i class="bi bi-arrow-up-right me-1"></i> Withdrawal
+                            </span>
+                            {% elif op.operation_type == 'ACCOUNT_OPENED' %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1">
+                                <i class="bi bi-person-plus me-1"></i> Account Opened
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1">{{ op.operation_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-mono small fw-semibold text-dark text-nowrap">{{ op.reference_id }}</td>
+                        <td class="small text-muted">{{ op.employee.username }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark small">{{ op.customer_username_snapshot|default:"-" }}</div>
+                            <div class="font-mono text-muted small">{{ op.account_number_snapshot|default:"-" }}</div>
+                        </td>
+                        <td class="text-end font-mono fw-bold {% if op.operation_type == 'DEPOSIT' %}text-success{% elif op.operation_type == 'WITHDRAWAL' %}text-danger{% else %}text-dark{% endif %} text-nowrap">
+                            {% if op.amount %}₹{{ op.amount|floatformat:2 }}{% else %}-{% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small">
+                                <i class="bi bi-check-circle me-1"></i>{{ op.status }}
+                            </span>
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a href="{% url 'staff_teller_receipt' op.reference_id %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 small" title="View Printable Receipt">
+                                <i class="bi bi-receipt me-1"></i> Receipt
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+            <span class="small text-muted">
+                Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} total records)
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link rounded-pill me-1" href="?page={{ page_obj.previous_page_number }}&date_from={{ date_from }}&date_to={{ date_to }}&op_type={{ op_type }}&q={{ q }}">Previous</a>
+                </li>
+                {% endif %}
+                <li class="page-item active">
+                    <span class="page-link rounded-pill me-1">{{ page_obj.number }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link rounded-pill" href="?page={{ page_obj.next_page_number }}&date_from={{ date_from }}&date_to={{ date_to }}&op_type={{ op_type }}&q={{ q }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-journal-x text-muted display-4 mb-2 d-block"></i>
+            <h6 class="fw-bold text-muted mb-1">No Matching Teller Operations Found</h6>
+            <p class="small text-muted mb-3">Try adjusting your filters or date range.</p>
+            <a href="{% url 'staff_teller_history' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                Reset Filters
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

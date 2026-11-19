@@ -1,0 +1,380 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Business &amp; Financial Operational Reports — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Header & Action Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Executive Analytics
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Business &amp; Financial Operational Reports
+            </h3>
+            <p class="text-muted small mb-0">Database-derived operational metrics, simulated ledger holdings &amp; staff workload distribution.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            <a href="{% url 'admin_reports_export_csv' %}?date_from={{ date_from }}&date_to={{ date_to }}" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-semibold">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Reports CSV
+            </a>
+            <a href="{% url 'admin_transaction_list' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-receipt me-1"></i> Transactions
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filter & Date Range Card -->
+    <div class="card p-3 p-md-4 mb-4 border shadow-sm rounded-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-muted">Date From</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-calendar-event text-muted"></i></span>
+                    <input type="date" name="date_from" value="{{ date_from }}" class="form-control bg-light border-start-0">
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-muted">Date To</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-calendar-check text-muted"></i></span>
+                    <input type="date" name="date_to" value="{{ date_to }}" class="form-control bg-light border-start-0">
+                </div>
+            </div>
+            <div class="col-12 col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold rounded-3">
+                    <i class="bi bi-funnel me-1"></i> Apply Range
+                </button>
+                <a href="{% url 'admin_reports' %}" class="btn btn-outline-secondary rounded-3" title="Reset to Last 30 Days">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- 1. EXECUTIVE SUMMARY & SIMULATED HOLDINGS -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Simulated Ledger Holdings</span>
+                <h3 class="fw-bold font-mono text-success mb-1">₹{{ data.total_simulated_holdings|floatformat:2 }}</h3>
+                <span class="badge bg-success text-white rounded-pill small" style="font-size: 0.68rem;">Across {{ data.total_accounts }} Bank Accounts</span>
+                <span class="text-muted d-block small mt-1" style="font-size: 0.70rem;">*Fictional academic simulation balances</span>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Net Cash Flow (In Range)</span>
+                <h3 class="fw-bold font-mono {% if data.net_cash_flow >= 0 %}text-primary{% else %}text-danger{% endif %} mb-1">
+                    {% if data.net_cash_flow >= 0 %}+{% endif %}₹{{ data.net_cash_flow|floatformat:2 }}
+                </h3>
+                <span class="text-primary small fw-medium" style="font-size: 0.72rem;">Deposits minus Withdrawals</span>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4 bg-light">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Customer Accounts</span>
+                <h3 class="fw-bold font-mono text-dark mb-1">{{ data.total_customers }}</h3>
+                <div class="small text-muted" style="font-size: 0.75rem;">
+                    <span class="text-success fw-semibold">{{ data.active_customers }} Active</span> &bull; 
+                    <span class="text-danger fw-semibold">{{ data.locked_customers }} Locked</span>
+                    <span class="text-muted ms-1">(+{{ data.new_customers_range }} in range)</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4 bg-light">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Bank Accounts Architecture</span>
+                <h3 class="fw-bold font-mono text-dark mb-1">{{ data.total_accounts }}</h3>
+                <div class="small text-muted" style="font-size: 0.75rem;">
+                    <span>{{ data.savings_accounts }} Savings</span> &bull; 
+                    <span>{{ data.current_accounts }} Current</span> &bull; 
+                    <span class="text-danger">{{ data.frozen_accounts }} Frozen</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. CASH FLOW & TRANSFER DYNAMICS (RANGE AWARE) -->
+    <div class="card p-4 border shadow-sm rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+            <div>
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-arrow-left-right text-primary me-2"></i>Cash Flow &amp; Peer-to-Peer Transfer Volumes
+                </h5>
+                <span class="text-muted small">Aggregated strictly for window {{ date_from }} to {{ date_to }}</span>
+            </div>
+            <span class="badge bg-light text-dark border font-mono small">Ledger Verified</span>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <div class="p-3 rounded-3 bg-light border text-center">
+                    <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Total Deposits</span>
+                    <h4 class="fw-bold text-success font-mono mb-1">₹{{ data.deposit_volume|floatformat:2 }}</h4>
+                    <span class="badge bg-success-subtle text-success rounded-pill font-mono">{{ data.deposit_count }} Transactions</span>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="p-3 rounded-3 bg-light border text-center">
+                    <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Total Withdrawals</span>
+                    <h4 class="fw-bold text-danger font-mono mb-1">₹{{ data.withdrawal_volume|floatformat:2 }}</h4>
+                    <span class="badge bg-danger-subtle text-danger rounded-pill font-mono">{{ data.withdrawal_count }} Transactions</span>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="p-3 rounded-3 bg-light border text-center">
+                    <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Customer Transfers</span>
+                    <h4 class="fw-bold text-primary font-mono mb-1">₹{{ data.transfer_volume|floatformat:2 }}</h4>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill font-mono">{{ data.transfer_count }} Transfers</span>
+                    <div class="text-muted mt-1" style="font-size: 0.68rem;">*Single-leg aggregation avoids symmetric double-counting</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. LOAN & FIXED DEPOSIT PORTFOLIOS -->
+    <div class="row g-4 mb-4">
+        <!-- Loans -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-cash-stack text-warning-emphasis me-2"></i>Loan Portfolio Governance
+                    </h5>
+                    <a href="{% url 'admin_loan_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2 py-0" style="font-size: 0.75rem;">
+                        View Portfolio &rarr;
+                    </a>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">Applications in Range</span>
+                            <h5 class="fw-bold text-dark font-mono mb-0">{{ data.loan_apps_range }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">{{ data.loan_approvals_range }} Approved &bull; {{ data.loan_rejections_range }} Rejected</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">Disbursed in Range</span>
+                            <h5 class="fw-bold text-success font-mono mb-0">₹{{ data.loan_disbursed_volume_range|floatformat:2 }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">{{ data.loan_approvals_range }} Loans Disbursed</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">Repayments Collected</span>
+                            <h5 class="fw-bold text-primary font-mono mb-0">₹{{ data.repayments_volume_range|floatformat:2 }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">{{ data.repayments_count_range }} EMI payments</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">Total Outstanding Balance</span>
+                            <h5 class="fw-bold text-dark font-mono mb-0">₹{{ data.total_outstanding_loan_balance|floatformat:2 }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">{{ data.active_loans_portfolio }} Active Repayable Loans</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fixed Deposits -->
+        <div class="col-12 col-lg-6">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-piggy-bank text-success me-2"></i>Fixed Deposit Term Dynamics
+                    </h5>
+                    <a href="{% url 'admin_fd_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-2 py-0" style="font-size: 0.75rem;">
+                        View Portfolio &rarr;
+                    </a>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">New Bookings in Range</span>
+                            <h5 class="fw-bold text-dark font-mono mb-0">{{ data.new_fds_range }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">Principal: ₹{{ data.new_fds_principal_range|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">Active Term Principal</span>
+                            <h5 class="fw-bold text-success font-mono mb-0">₹{{ data.active_fds_principal|floatformat:2 }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">{{ data.active_fds_count }} Active Deposits</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">Maturity Settlements</span>
+                            <h5 class="fw-bold text-primary font-mono mb-0">₹{{ data.settled_payout_range|floatformat:2 }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">{{ data.settled_fds_range }} Deposits Settled</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <span class="text-muted small d-block">Premature Closures</span>
+                            <h5 class="fw-bold text-secondary font-mono mb-0">₹{{ data.closed_refund_range|floatformat:2 }}</h5>
+                            <span class="text-muted small" style="font-size: 0.70rem;">{{ data.closed_fds_range }} Closures (100% refund)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. CARDS, KYC & SUPPORT SERVICES -->
+    <div class="row g-4 mb-4">
+        <!-- Virtual Cards -->
+        <div class="col-12 col-md-4">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                    <i class="bi bi-credit-card text-danger me-2"></i>Virtual Cards
+                </h5>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Total Issued Cards</span>
+                        <span class="font-mono fw-bold">{{ data.total_cards }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Active Cards</span>
+                        <span class="badge bg-success-subtle text-success font-mono">{{ data.active_cards }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Blocked Cards</span>
+                        <span class="badge bg-danger-subtle text-danger font-mono">{{ data.blocked_cards }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Cancelled / Expired</span>
+                        <span class="font-mono text-muted">{{ data.cancelled_cards|add:data.expired_cards }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- KYC Pipeline -->
+        <div class="col-12 col-md-4">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                    <i class="bi bi-shield-check text-info me-2"></i>KYC Pipeline
+                </h5>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Pending Submissions</span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis font-mono">{{ data.pending_kyc }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Under Staff Review</span>
+                        <span class="badge bg-info-subtle text-info font-mono">{{ data.under_review_kyc }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Approved Customers</span>
+                        <span class="badge bg-success-subtle text-success font-mono">{{ data.approved_kyc }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Rejected Applications</span>
+                        <span class="badge bg-danger-subtle text-danger font-mono">{{ data.rejected_kyc }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Support Helpdesk -->
+        <div class="col-12 col-md-4">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                    <i class="bi bi-headset text-primary me-2"></i>Support Helpdesk
+                </h5>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Tickets in Range</span>
+                        <span class="font-mono fw-bold">{{ data.total_tickets_range }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Open &amp; Pending Backlog</span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis font-mono">{{ data.open_tickets_range }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span>Resolved / Closed</span>
+                        <span class="badge bg-success-subtle text-success font-mono">{{ data.resolved_tickets_range }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. STAFF WORKLOAD ATTRIBUTION -->
+    <div class="card p-4 border shadow-sm rounded-4 mb-4">
+        <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+            <i class="bi bi-people text-primary me-2"></i>Staff &amp; Employee Operational Workload
+        </h5>
+        {% if data.staff_workload %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th>Employee</th>
+                        <th>Role</th>
+                        <th class="text-center">Teller Ops</th>
+                        <th class="text-center">KYC Reviews</th>
+                        <th class="text-center">Loan Verifications</th>
+                        <th class="text-center">Support Handled</th>
+                        <th class="text-end pe-3">Total Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data.staff_workload %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'admin_employee_detail' item.employee.id %}" class="fw-semibold text-dark text-decoration-none">
+                                {{ item.employee.get_full_name|default:item.employee.username }}
+                            </a>
+                            <span class="text-muted small font-mono">(@{{ item.employee.username }})</span>
+                        </td>
+                        <td>
+                            <span class="badge {% if item.employee.role == 'ADMIN' %}bg-danger-subtle text-danger{% else %}bg-primary-subtle text-primary{% endif %} rounded-pill font-mono small">
+                                {{ item.employee.role }}
+                            </span>
+                        </td>
+                        <td class="text-center font-mono">{{ item.teller_count }}</td>
+                        <td class="text-center font-mono">{{ item.kyc_count }}</td>
+                        <td class="text-center font-mono">{{ item.loan_verif_count }}</td>
+                        <td class="text-center font-mono">{{ item.support_count }}</td>
+                        <td class="text-end pe-3 font-mono fw-bold text-primary">{{ item.total_actions }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted small">
+            <i class="bi bi-person-x fs-3 d-block mb-1"></i>
+            No staff operational activity recorded in the selected window.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

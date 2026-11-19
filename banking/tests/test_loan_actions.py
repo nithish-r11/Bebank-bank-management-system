@@ -1,4 +1,5 @@
 import threading
+import uuid
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -157,7 +158,8 @@ class LoanActionSecurityTests(TestCase):
         original_save = Loan.save
 
         def faulty_save(loan_instance, *args, **kwargs):
-            if kwargs.get('update_fields') == ['status'] and loan_instance.status == 'APPROVED':
+            update_fields = kwargs.get('update_fields') or []
+            if 'status' in update_fields and loan_instance.status == 'APPROVED':
                 raise RuntimeError("Simulated database failure during loan status commit!")
             return original_save(loan_instance, *args, **kwargs)
 
@@ -232,7 +234,8 @@ class MoneyOperationsAtomicSafetyTests(TestCase):
                 self.client.post('/bank/transfer/', data={
                     'account_id': self.sender_acc.id,
                     'account_number': self.receiver_acc.account_number,
-                    'amount': '400.00'
+                    'amount': '400.00',
+                    'idempotency_key': str(uuid.uuid4())
                 })
 
         self.sender_acc.refresh_from_db()
@@ -255,7 +258,8 @@ class MoneyOperationsAtomicSafetyTests(TestCase):
         response = self.client.post('/bank/transfer/', data={
             'account_id': self.sender_acc.id,
             'account_number': self.sender_acc.account_number,
-            'amount': '100.00'
+            'amount': '100.00',
+            'idempotency_key': str(uuid.uuid4())
         })
         self.assertEqual(response.status_code, 302)
         self.sender_acc.refresh_from_db()
@@ -419,7 +423,8 @@ class ConcurrentBankingPostgresTests(TransactionTestCase):
                 resp = client.post('/bank/transfer/', data={
                     'account_id': self.account.id,
                     'account_number': dest_acc.account_number,
-                    'amount': '400.00'
+                    'amount': '400.00',
+                    'idempotency_key': str(uuid.uuid4())
                 })
                 status_codes.append(resp.status_code)
             except Exception as e:
@@ -442,8 +447,11 @@ class ConcurrentBankingPostgresTests(TransactionTestCase):
         dest_acc.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal('100.00'), "Sender balance must be 100.00 after 1 transfer.")
         self.assertEqual(dest_acc.balance, Decimal('400.00'), "Receiver balance must be 400.00 after 1 transfer.")
-        transfer_tx_count = BankTx.objects.filter(account=self.account, transaction_type="TRANSFER").count()
-        self.assertEqual(transfer_tx_count, 1, "Exactly one TRANSFER record must exist.")
+        transfer_tx_count = BankTx.objects.filter(
+            account=self.account,
+            transaction_type__in=["TRANSFER", "TRANSFER_DEBIT"]
+        ).count()
+        self.assertEqual(transfer_tx_count, 1, "Exactly one transfer debit record must exist.")
 
 
 class BankingFormViewGetPostRegressionTests(TestCase):
@@ -499,7 +507,7 @@ class BankingFormViewGetPostRegressionTests(TestCase):
         self.client.force_login(self.employee)
         response = self.client.get(f'/bank/deposit/?account_number=50001&amount=500')
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'deposit.html')
+        self.assertTemplateUsed(response, 'staff_deposit.html')
         self.account.refresh_from_db()
         self.assertEqual(self.account.balance, Decimal('1000.00'))
         self.assertFalse(BankTx.objects.filter(account=self.account).exists())

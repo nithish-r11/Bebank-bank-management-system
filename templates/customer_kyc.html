@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulated KYC Verification — BEBANK</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="/static/images/bebank_b_monogram.svg">
+
+<style>
+body {
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0f172a;
+    padding-bottom: 110px;
+}
+
+.card {
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(10, 25, 47, 0.05);
+}
+
+.font-mono {
+    font-family: 'Consolas', 'SF Mono', 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.btn-primary-navy {
+    background: #0a192f;
+    border-color: #0a192f;
+    color: #ffffff;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+.btn-primary-navy:hover {
+    background: #112240;
+    border-color: #112240;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+/* Toast alert */
+.toast-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 18px;
+    color: white;
+    border-radius: 8px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: 0.4s;
+}
+.toast-box.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast-success { background: #16a34a; }
+.toast-error { background: #dc2626; }
+
+
+</style>
+</head>
+
+<body>
+
+<div class="container mt-4" style="max-width: 860px;">
+
+    <!-- Top Navigation Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1" style="color: #0a192f;">
+                <i class="bi bi-shield-lock me-2"></i>Simulated KYC Verification
+            </h4>
+            <p class="text-muted small mb-0">Simulated identity verification workflow for academic banking demonstrations.</p>
+        </div>
+        <div>
+            <a href="{% url 'customer_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Mandatory Simulation Safety Notice -->
+    <div class="alert alert-warning border-warning-subtle rounded-4 p-3 mb-4">
+        <div class="d-flex gap-3 align-items-start">
+            <i class="bi bi-exclamation-triangle-fill fs-4 text-warning-emphasis"></i>
+            <div>
+                <h6 class="fw-bold mb-1 text-warning-emphasis">Simulated Academic Environment Notice</h6>
+                <p class="small mb-0 text-warning-emphasis">
+                    This is an educational banking simulation. <strong>Never enter genuine Aadhaar, PAN, Passport, or real government ID numbers.</strong> Use fictitious demo test values only (e.g., <code>DEMO-DOC-1001</code>). No real personal identity checks are performed.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Verification Status Card -->
+    <div class="card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h6 class="fw-bold mb-1" style="color: #0a192f;">Current KYC Verification Status</h6>
+                <span class="small text-muted">Account Holder: {{ user.get_full_name|default:user.username }}</span>
+            </div>
+            <div>
+                {% if user.kyc_status == 'APPROVED' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-6">
+                        <i class="bi bi-patch-check-fill me-1"></i> Verified & Approved
+                    </span>
+                {% elif user.kyc_status == 'PENDING' %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fs-6">
+                        <i class="bi bi-clock me-1"></i> Pending Verification
+                    </span>
+                {% elif user.kyc_status == 'UNDER_REVIEW' %}
+                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-2 fs-6">
+                        <i class="bi bi-eye me-1"></i> Under Review
+                    </span>
+                {% elif user.kyc_status == 'REJECTED' %}
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 fs-6">
+                        <i class="bi bi-x-circle me-1"></i> Verification Rejected
+                    </span>
+                {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 fs-6">
+                        <i class="bi bi-dash-circle me-1"></i> Not Submitted
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if user.kyc_status == 'APPROVED' %}
+            <div class="p-3 bg-success-subtle border border-success-subtle rounded-3 mt-2">
+                <div class="d-flex align-items-center gap-2 text-success fw-semibold mb-1">
+                    <i class="bi bi-shield-check fs-5"></i> Verification Record Finalized & Protected
+                </div>
+                <p class="small text-success-emphasis mb-1">
+                    Your simulated KYC verification has been reviewed and approved by BEBANK compliance.
+                </p>
+                {% if user.kyc_reviewed_at %}
+                <div class="small text-muted">
+                    Approved on: <span class="font-mono">{{ user.kyc_reviewed_at|date:"d M Y, H:i" }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+        {% elif user.kyc_status == 'PENDING' or user.kyc_status == 'UNDER_REVIEW' %}
+            <div class="p-3 bg-light border rounded-3 mt-2">
+                <div class="fw-semibold text-dark mb-1">
+                    Submitted Simulated Document Details:
+                </div>
+                <ul class="list-unstyled small text-muted mb-0">
+                    <li><strong>Document Type:</strong> {{ user.get_simulated_id_type_display|default:user.simulated_id_type }}</li>
+                    <li><strong>Reference Number:</strong> <span class="font-mono">{{ user.simulated_id_number }}</span></li>
+                    {% if user.kyc_submitted_at %}
+                    <li><strong>Submission Time:</strong> {{ user.kyc_submitted_at|date:"d M Y, H:i" }}</li>
+                    {% endif %}
+                </ul>
+                <div class="mt-2 text-muted small">
+                    <i class="bi bi-info-circle me-1"></i> Modifications are locked while verification is underway.
+                </div>
+            </div>
+
+        {% elif user.kyc_status == 'REJECTED' %}
+            <div class="p-3 bg-danger-subtle border border-danger-subtle rounded-3 mt-2">
+                <div class="fw-semibold text-danger mb-1">
+                    <i class="bi bi-exclamation-circle me-1"></i> Rejection Reason
+                </div>
+                <p class="text-danger-emphasis mb-0 small">
+                    {{ user.kyc_rejection_reason|default:"The provided simulated details could not be validated." }}
+                </p>
+                <div class="mt-2 text-dark small fw-semibold">
+                    Please correct your simulated document details and resubmit below.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Submission / Resubmission Form (Only for NOT_SUBMITTED or REJECTED) -->
+    {% if user.kyc_status == 'NOT_SUBMITTED' or user.kyc_status == 'REJECTED' %}
+    <div class="card p-4">
+        <h6 class="fw-bold mb-3" style="color: #0a192f;">
+            <i class="bi bi-file-earmark-check me-1"></i>
+            {% if user.kyc_status == 'REJECTED' %}Resubmit Simulated KYC Details{% else %}Submit Simulated KYC Verification{% endif %}
+        </h6>
+        <form method="post" action="{% url 'customer_kyc' %}">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-muted">Simulated Document Type *</label>
+                    <select name="simulated_id_type" class="form-select" required>
+                        <option value="">-- Choose Simulated Document --</option>
+                        {% for code, label in doc_choices %}
+                        <option value="{{ code }}" {% if user.simulated_id_type == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-muted">Simulated Reference / Serial Number *</label>
+                    <input type="text" name="simulated_id_number" class="form-control font-mono" value="{{ user.simulated_id_number }}" placeholder="e.g. DEMO-DOC-88219" maxlength="50" required>
+                    <div class="form-text small">Enter fictitious test characters (3-50 chars). Do NOT use genuine IDs.</div>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="confirmSimulated" required>
+                        <label class="form-check-label small text-muted" for="confirmSimulated">
+                            I acknowledge that this is a simulated demo banking environment and these values are non-genuine test entries.
+                        </label>
+                    </div>
+                </div>
+                <div class="col-12 text-end">
+                    <button type="submit" class="btn btn-primary-navy px-4 py-2 rounded-pill">
+                        <i class="bi bi-cloud-arrow-up me-1"></i> Submit for Verification
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Toast Feedback Notifications -->
+{% if messages %}
+{% for message in messages %}
+<div class="toast-box show {% if message.tags == 'error' %}toast-error{% else %}toast-success{% endif %}">
+    {{ message }}
+</div>
+{% endfor %}
+<script>
+setTimeout(() => {
+    document.querySelectorAll(".toast-box").forEach(el => el.classList.remove("show"));
+}, 3500);
+</script>
+{% endif %}
+
+<!-- Bottom Navigation Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="kyc" %}
+
+{% include "includes/submit_guard.html" %}
+
+</body>
+</html>

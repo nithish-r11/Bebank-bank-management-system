@@ -41,44 +41,7 @@ transform: translateY(0);
 .toast-success{ background:#28a745; }
 .toast-error{ background:#dc3545; }
 
-/* ⭐ Fixed App Navbar */
-.bottom-nav{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
-margin:auto;
-width:100%;
-max-width:520px;
-height:78px;
-background:linear-gradient(120deg,#0f0f10,#1c1c1f);
-border-top-left-radius:28px;
-border-top-right-radius:28px;
-box-shadow:0 -10px 30px rgba(0,0,0,.35);
-display:flex;
-align-items:center;
-justify-content:space-around;
-z-index:9999;
-}
 
-.bottom-nav a{
-flex:1;
-text-align:center;
-color:#9aa0a6;
-font-size:12px;
-text-decoration:none;
-}
-
-.bottom-nav i{
-display:block;
-font-size:22px;
-margin-bottom:4px;
-}
-
-.bottom-nav a.active{
-color:#7b7cff;
-transform:translateY(-6px);
-}
 </style>
 </head>
 
@@ -91,12 +54,28 @@ transform:translateY(-6px);
 
 <form method="post">
 {% csrf_token %}
+<input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
 
-<label class="mb-1">Receiver Account Number</label>
-<input type="text" name="account_number" class="form-control mb-3" placeholder="Receiver Account Number" required>
+<div class="mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <label class="fw-semibold mb-0">Select Beneficiary</label>
+    <a href="{% url 'beneficiary_list' %}" class="small text-decoration-none">Manage Beneficiaries &rarr;</a>
+  </div>
+  <select name="beneficiary_id" id="beneficiarySelect" class="form-select">
+    <option value="">-- Choose Saved Beneficiary or Enter Manually --</option>
+    {% for b in beneficiaries %}
+      <option value="{{ b.id }}" data-account-number="{{ b.account.account_number }}" {% if selected_beneficiary_id == b.id|stringformat:"s" %}selected{% endif %} {% if not b.is_available %}disabled{% endif %}>
+        {{ b.nickname|default:b.account_holder_name }} ({{ b.masked_account_number }}){% if not b.is_available %} [Unavailable]{% endif %}
+      </option>
+    {% endfor %}
+  </select>
+</div>
 
-<label class="mb-1">Amount</label>
-<input type="number" name="amount" class="form-control mb-3" placeholder="Enter amount" required>
+<label class="mb-1 fw-semibold">Receiver Account Number</label>
+<input type="text" name="account_number" id="accountNumberInput" class="form-control mb-3" placeholder="Receiver Account Number" required>
+
+<label class="mb-1 fw-semibold">Amount (₹)</label>
+<input type="number" step="0.01" min="1" name="amount" class="form-control mb-3" placeholder="Enter amount" required>
 
 <button class="btn btn-success w-100">
 Transfer Money
@@ -128,30 +107,31 @@ e.classList.remove("show");
 </script>
 {% endif %}
 
-<!-- ⭐ Bottom Navbar -->
-<div class="bottom-nav">
+<!-- Bottom Navigation Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="transfer" %}
 
-<a href="/customer/dashboard/">
-<i class="bi bi-house"></i>Home
-</a>
-
-<a href="/bank/withdraw/">
-<i class="bi bi-dash-circle"></i>Withdraw
-</a>
-
-<a href="/bank/transfer/" class="active">
-<i class="bi bi-arrow-left-right"></i>Transfer
-</a>
-
-<a href="/bank/history/">
-<i class="bi bi-clock-history"></i>History
-</a>
-
-<a href="/logout/">
-<i class="bi bi-box-arrow-right"></i>Logout
-</a>
-
-</div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const bSelect = document.getElementById('beneficiarySelect');
+    const accInput = document.getElementById('accountNumberInput');
+    if (bSelect && accInput) {
+        bSelect.addEventListener('change', function() {
+            const selectedOpt = this.options[this.selectedIndex];
+            if (selectedOpt && selectedOpt.dataset.accountNumber) {
+                accInput.value = selectedOpt.dataset.accountNumber;
+            } else if (!this.value) {
+                accInput.value = '';
+            }
+        });
+        if (bSelect.selectedIndex > 0) {
+            const selectedOpt = bSelect.options[bSelect.selectedIndex];
+            if (selectedOpt && selectedOpt.dataset.accountNumber && !accInput.value) {
+                accInput.value = selectedOpt.dataset.accountNumber;
+            }
+        }
+    }
+});
+</script>
 
 {% include "includes/submit_guard.html" %}
 

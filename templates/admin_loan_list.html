@@ -1,0 +1,281 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Loan Governance &amp; Credit Portfolio — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Header & Action Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Credit Portfolio Governance
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Loan Portfolio Governance
+            </h3>
+            <p class="text-muted small mb-0">Centralized credit underwriting desk, employee recommendations &amp; final administrative disbursement authority.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            <a href="{% url 'admin_account_list' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-wallet2 me-1"></i> Accounts Directory
+            </a>
+            <a href="{% url 'admin_customer_list' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-people me-1"></i> Customers Directory
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top KPI Telemetry Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4 bg-light">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Total Loan Applications</span>
+                <h4 class="fw-bold font-mono text-dark mb-0">{{ counts.total_loans }}</h4>
+                <span class="text-muted small" style="font-size: 0.72rem;">Historical credit requests</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Pending Final Decisions</span>
+                <h4 class="fw-bold font-mono text-warning-emphasis mb-0">{{ counts.pending_loans }}</h4>
+                <span class="badge {% if counts.pending_loans > 0 %}bg-warning text-dark{% else %}bg-secondary-subtle text-muted{% endif %} rounded-pill small mt-1" style="font-size: 0.68rem;">
+                    {% if counts.pending_loans > 0 %}Action Required (Admin Approval){% else %}All Decisions Processed{% endif %}
+                </span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Active Disbursed Loans</span>
+                <h4 class="fw-bold font-mono text-success mb-0">{{ counts.active_loans }}</h4>
+                <span class="text-success small fw-medium" style="font-size: 0.72rem;">Currently in repayment cycle</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Disbursed Volume (Principal)</span>
+                <h4 class="fw-bold font-mono text-dark mb-0">₹{{ counts.disbursed_volume|floatformat:2 }}</h4>
+                <span class="text-muted small" style="font-size: 0.72rem;">Cumulative loan disbursements</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar Card -->
+    <div class="card p-3 p-md-4 mb-4 border shadow-sm rounded-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <!-- Search Query -->
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-muted">Search Loans</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control bg-light border-start-0" placeholder="Loan #, A/C #, customer @username, name...">
+                </div>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Loan Status</label>
+                <select name="status" class="form-select bg-light">
+                    <option value="" {% if not selected_status %}selected{% endif %}>All Statuses</option>
+                    <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>Pending Initial Review</option>
+                    <option value="UNDER_REVIEW" {% if selected_status == 'UNDER_REVIEW' %}selected{% endif %}>Staff Under Review</option>
+                    <option value="APPROVED" {% if selected_status == 'APPROVED' %}selected{% endif %}>Approved &amp; Disbursed</option>
+                    <option value="REJECTED" {% if selected_status == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                    <option value="CLOSED" {% if selected_status == 'CLOSED' %}selected{% endif %}>Fully Repaid / Closed</option>
+                </select>
+            </div>
+
+            <!-- Date From -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Date From</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control bg-light">
+            </div>
+
+            <!-- Date To -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Date To</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control bg-light">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 rounded-3">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                {% if query or selected_status or date_from or date_to %}
+                <a href="{% url 'admin_loan_list' %}" class="btn btn-outline-secondary rounded-3" title="Clear Filters">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Loan Table Card -->
+    <div class="card border shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-muted small text-uppercase">
+                        <th class="ps-3">Loan ID &amp; Date</th>
+                        <th>Applicant Customer</th>
+                        <th>Disbursement Account</th>
+                        <th>Principal Amount</th>
+                        <th>Terms (Rate &amp; Tenure)</th>
+                        <th>Monthly EMI</th>
+                        <th>Recommendation</th>
+                        <th>Decision Status</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loan in page_obj %}
+                    <tr>
+                        <td class="ps-3">
+                            <a href="{% url 'admin_loan_detail' loan.id %}" class="font-mono fw-bold text-dark text-decoration-none d-block">
+                                #LOAN-{{ loan.id }}
+                            </a>
+                            <span class="font-mono text-muted small">{{ loan.disbursed_at|default:loan.id|stringformat:"s"|slice:":0" }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 32px; height: 32px; background: #0284c7; font-size: 0.8rem;">
+                                    {{ loan.account.user.first_name|first|default:loan.account.user.username|first|upper }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'admin_customer_detail' loan.account.user.id %}" class="fw-bold text-dark text-decoration-none d-block small">
+                                        {{ loan.account.user.get_full_name|default:loan.account.user.username }}
+                                    </a>
+                                    <span class="font-mono text-muted small">@{{ loan.account.user.username }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <a href="{% url 'admin_account_detail' loan.account.id %}" class="font-mono fw-bold text-dark text-decoration-none">
+                                #••••{{ loan.account.account_number|slice:"-4:" }}
+                            </a>
+                            <div class="text-muted small" style="font-size: 0.72rem;">{{ loan.account.get_account_type_display|default:loan.account.account_type }}</div>
+                        </td>
+                        <td>
+                            <span class="font-mono fw-bold text-dark fs-6">
+                                ₹{{ loan.amount|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="small fw-semibold text-dark">{{ loan.duration_months }} Months</div>
+                            <span class="badge bg-light text-muted border font-mono small">{{ loan.interest_rate }}% p.a.</span>
+                        </td>
+                        <td>
+                            <span class="font-mono fw-semibold text-primary">
+                                {% if loan.emi_amount %}₹{{ loan.emi_amount|floatformat:2 }}{% else %}Calculated on Approval{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if loan.recommendation == 'RECOMMEND_APPROVE' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small">
+                                    <i class="bi bi-hand-thumbs-up me-1"></i> Recommended
+                                </span>
+                            {% elif loan.recommendation == 'RECOMMEND_REJECT' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill small">
+                                    <i class="bi bi-hand-thumbs-down me-1"></i> Reject Suggested
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-muted border rounded-pill small">
+                                    Pending Review
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if loan.status == 'APPROVED' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small fw-semibold">
+                                    <i class="bi bi-check-circle-fill me-1"></i> APPROVED
+                                </span>
+                            {% elif loan.status == 'PENDING' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1 small fw-semibold">
+                                    <i class="bi bi-hourglass-split me-1"></i> PENDING
+                                </span>
+                            {% elif loan.status == 'UNDER_REVIEW' %}
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill px-2 py-1 small fw-semibold">
+                                    <i class="bi bi-search me-1"></i> UNDER REVIEW
+                                </span>
+                            {% elif loan.status == 'REJECTED' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small fw-semibold">
+                                    <i class="bi bi-x-circle-fill me-1"></i> REJECTED
+                                </span>
+                            {% elif loan.status == 'CLOSED' %}
+                                <span class="badge bg-secondary-subtle text-muted border rounded-pill px-2 py-1 small fw-semibold">
+                                    <i class="bi bi-archive-fill me-1"></i> CLOSED
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'admin_loan_detail' loan.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                <i class="bi bi-eye me-1"></i> Governance
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-cash-stack fs-1 d-block mb-2 text-secondary"></i>
+                            <h6 class="fw-bold mb-1">No loan applications found</h6>
+                            <p class="small mb-0">No loan records match your search or filter parameters.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="p-3 border-top d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} loan applications
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&status={{ selected_status }}&date_from={{ date_from }}&date_to={{ date_to }}">&laquo;</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ query }}&status={{ selected_status }}&date_from={{ date_from }}&date_to={{ date_to }}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ query }}&status={{ selected_status }}&date_from={{ date_from }}&date_to={{ date_to }}">&raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

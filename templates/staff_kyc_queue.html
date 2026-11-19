@@ -1,0 +1,304 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}KYC Review &amp; Verification Workspace — BEBANK{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4" style="max-width: 1320px;">
+
+    <!-- Top Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1" style="color: var(--bebank-navy-primary);">
+                <i class="bi bi-shield-check text-success me-2"></i>KYC Review &amp; Verification Workspace
+            </h3>
+            <p class="text-muted small mb-0">Inspect simulated identity submissions, manage operations review queue, and enforce compliance verification.</p>
+        </div>
+        <div>
+            <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Mandatory Simulation Notice -->
+    <div class="alert alert-warning border-warning-subtle rounded-4 p-3 mb-4 shadow-sm">
+        <div class="d-flex gap-3 align-items-center">
+            <i class="bi bi-shield-exclamation fs-3 text-warning-emphasis"></i>
+            <div>
+                <h6 class="fw-bold mb-0 text-warning-emphasis">Academic Simulation Compliance Protocol</h6>
+                <p class="small mb-0 text-warning-emphasis">
+                    This compliance queue processes <strong>simulated academic verification data only</strong>. Real government identity checks (UIDAI Aadhaar / Income Tax PAN) are never performed or contacted.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filter Pills / Status Tabs -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a href="?status=PENDING{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if status_tab == 'PENDING' %}btn-warning text-dark{% else %}btn-outline-secondary bg-white text-dark{% endif %}">
+            <i class="bi bi-clock me-1"></i> Pending Submissions
+            <span class="badge bg-dark text-white rounded-pill ms-1">{{ pending_count }}</span>
+        </a>
+
+        <a href="?status=UNDER_REVIEW{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if status_tab == 'UNDER_REVIEW' %}btn-info text-dark{% else %}btn-outline-secondary bg-white text-dark{% endif %}">
+            <i class="bi bi-eye me-1"></i> Under Review
+            <span class="badge bg-dark text-white rounded-pill ms-1">{{ under_review_count }}</span>
+        </a>
+
+        <a href="?status=APPROVED{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if status_tab == 'APPROVED' %}btn-success text-white{% else %}btn-outline-secondary bg-white text-dark{% endif %}">
+            <i class="bi bi-patch-check me-1"></i> Approved
+            <span class="badge bg-dark text-white rounded-pill ms-1">{{ approved_count }}</span>
+        </a>
+
+        <a href="?status=REJECTED{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if status_tab == 'REJECTED' %}btn-danger text-white{% else %}btn-outline-secondary bg-white text-dark{% endif %}">
+            <i class="bi bi-x-circle me-1"></i> Rejected
+            <span class="badge bg-dark text-white rounded-pill ms-1">{{ rejected_count }}</span>
+        </a>
+
+        <a href="?status=ALL{% if q %}&q={{ q }}{% endif %}" class="btn btn-sm rounded-pill px-3 py-2 fw-semibold {% if status_tab == 'ALL' %}btn-dark text-white{% else %}btn-outline-secondary bg-white text-dark{% endif %}">
+            <i class="bi bi-collection me-1"></i> All Submissions
+            <span class="badge bg-secondary text-white rounded-pill ms-1">{{ all_count }}</span>
+        </a>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="card p-3 mb-4 border-0 shadow-sm bg-white">
+        <form method="get" class="row g-2 align-items-center">
+            <input type="hidden" name="status" value="{{ status_tab }}">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text"
+                           name="q"
+                           value="{{ q }}"
+                           class="form-control border-start-0"
+                           placeholder="Search queue by customer username, name, email, phone, or simulated ID number...">
+                </div>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 fw-semibold" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                    Search
+                </button>
+                {% if q %}
+                <a href="?status={{ status_tab }}" class="btn btn-outline-secondary" title="Clear Search">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Queue Table -->
+    <div class="card border-0 shadow-sm bg-white mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+            <span class="fw-bold text-dark">
+                Queue: <span class="badge bg-light text-dark border">{{ status_tab }}</span>
+            </span>
+            <span class="small text-muted">Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light text-uppercase">
+                    <tr>
+                        <th>Customer</th>
+                        <th>Simulated Document</th>
+                        <th>Reference Number</th>
+                        <th>Submitted At</th>
+                        <th>Status</th>
+                        <th>Review Details</th>
+                        <th class="text-end" style="min-width: 220px;">Review Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-dark">{{ u.get_full_name|default:u.username }}</div>
+                            <div class="text-muted"><code>@{{ u.username }}</code> | <span class="font-mono">{{ u.phone|default:"-" }}</span></div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-secondary border">
+                                {{ u.get_simulated_id_type_display|default:u.simulated_id_type|default:"Demo Document" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="font-mono fw-bold text-dark">{{ u.masked_simulated_id }}</span>
+                        </td>
+                        <td class="font-mono text-muted">
+                            {{ u.kyc_submitted_at|date:"d M Y, H:i"|default:"-" }}
+                        </td>
+                        <td>
+                            {% if u.kyc_status == 'APPROVED' or u.kyc_verified %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="bi bi-patch-check-fill me-1"></i> Approved
+                            </span>
+                            {% elif u.kyc_status == 'PENDING' %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                <i class="bi bi-clock me-1"></i> Pending
+                            </span>
+                            {% elif u.kyc_status == 'UNDER_REVIEW' %}
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1">
+                                <i class="bi bi-eye me-1"></i> Under Review
+                            </span>
+                            {% elif u.kyc_status == 'REJECTED' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                <i class="bi bi-x-circle me-1"></i> Rejected
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">
+                                Not Submitted
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.kyc_reviewed_by %}
+                            <div>By: <strong>{{ u.kyc_reviewed_by.username }}</strong></div>
+                            <div class="text-muted font-mono small">{{ u.kyc_reviewed_at|date:"d M Y, H:i" }}</div>
+                            {% endif %}
+                            {% if u.kyc_rejection_reason %}
+                            <div class="text-danger small mt-1 text-truncate" style="max-width: 200px;" title="{{ u.kyc_rejection_reason }}">
+                                <i class="bi bi-info-circle me-1"></i>{{ u.kyc_rejection_reason }}
+                            </div>
+                            {% endif %}
+                            {% if not u.kyc_reviewed_by and not u.kyc_rejection_reason %}
+                            <span class="text-muted italic">Awaiting review</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end align-items-center gap-1">
+                                <a href="{% url 'staff_customer_detail' u.id %}" class="btn btn-sm btn-outline-secondary rounded-pill" title="View Customer 360° Profile">
+                                    <i class="bi bi-person-lines-fill"></i>
+                                </a>
+
+                                {% if u.kyc_status != 'APPROVED' %}
+                                <form method="post" action="{% url 'staff_kyc_review' u.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="approve">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="btn btn-sm btn-success rounded-pill px-2" onclick="return confirm('Approve simulated KYC for {{ u.username }}?');" title="Approve KYC">
+                                        <i class="bi bi-check-lg"></i> Approve
+                                    </button>
+                                </form>
+
+                                {% if u.kyc_status == 'PENDING' %}
+                                <form method="post" action="{% url 'staff_kyc_review' u.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="under_review">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="btn btn-sm btn-info text-white rounded-pill px-2" title="Mark Under Review">
+                                        <i class="bi bi-eye"></i> Review
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <!-- Reject Button triggers modal -->
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2" data-bs-toggle="modal" data-bs-target="#rejectModal{{ u.id }}" title="Reject KYC">
+                                    <i class="bi bi-x-lg"></i> Reject
+                                </button>
+                                {% else %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                                    <i class="bi bi-lock-fill me-1"></i> Verified &amp; Protected
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Reject Modal for User -->
+                            {% if u.kyc_status != 'APPROVED' %}
+                            <div class="modal fade" id="rejectModal{{ u.id }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ u.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered text-start">
+                                    <div class="modal-content border-0 shadow">
+                                        <div class="modal-header bg-danger text-white">
+                                            <h6 class="modal-title fw-bold" id="rejectModalLabel{{ u.id }}">
+                                                <i class="bi bi-exclamation-triangle me-1"></i> Reject KYC: {{ u.username }}
+                                            </h6>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form method="post" action="{% url 'staff_kyc_review' u.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="reject">
+                                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                            <div class="modal-body">
+                                                <p class="small text-muted mb-2">
+                                                    Specify the exact discrepancy or simulated document verification failure reason. The customer will see this message.
+                                                </p>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold small text-dark">Rejection Reason</label>
+                                                    <textarea name="rejection_reason" class="form-control" rows="3" placeholder="e.g. Simulated document photo blurred or identifier mismatch..." required></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer bg-light py-2">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-danger btn-sm fw-semibold">Confirm Rejection</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-shield-check fs-2 d-block mb-2 opacity-50"></i>
+                            No KYC submissions found in this status queue.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3">
+            <div class="small text-muted">
+                Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+            </div>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?status={{ status_tab }}&page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}">&laquo; Previous</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+                {% endif %}
+
+                {% for p in page_obj.paginator.page_range %}
+                    {% if p == page_obj.number %}
+                    <li class="page-item active"><span class="page-link" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">{{ p }}</span></li>
+                    {% elif p >= page_obj.number|add:"-2" and p <= page_obj.number|add:"2" %}
+                    <li class="page-item">
+                        <a class="page-link" href="?status={{ status_tab }}&page={{ p }}{% if q %}&q={{ q }}{% endif %}">{{ p }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?status={{ status_tab }}&page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}">Next &raquo;</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

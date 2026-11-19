@@ -1,0 +1,102 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Edit Employee #{{ employee.id }} — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2" style="max-width: 800px; margin: 0 auto;">
+
+    <!-- Back & Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'admin_employee_detail' employee.id %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-2">
+                <i class="bi bi-arrow-left me-1"></i> Staff Profile
+            </a>
+            <h3 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-pencil-square text-primary me-2"></i>Edit Employee Profile
+            </h3>
+            <p class="text-muted small mb-0">Update contact and operational details for @{{ employee.username }}.</p>
+        </div>
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill small">
+            Admin Controlled
+        </span>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Edit Form Card -->
+    <div class="card p-4 border shadow-sm rounded-4">
+        <form method="POST">
+            {% csrf_token %}
+
+            <!-- Whitelist Security Note -->
+            <div class="alert alert-light border rounded-3 small mb-4">
+                <i class="bi bi-shield-lock text-primary me-1"></i>
+                <strong>Security Guard:</strong> Only contact and personal profile attributes may be edited. Role boundaries (<span class="badge bg-purple-subtle text-purple border" style="background:#f3e8ff; color:#7e22ce;">{{ employee.role }}</span>) and administrative privileges cannot be altered via this form.
+            </div>
+
+            <!-- Immutable Core Attributes -->
+            <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">Username (Immutable)</label>
+                    <input type="text" class="form-control bg-white font-mono" value="{{ employee.username }}" readonly disabled>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">Role Assignment</label>
+                    <input type="text" class="form-control bg-white font-mono" value="{{ employee.role }}" readonly disabled>
+                </div>
+            </div>
+
+            <!-- Whitelisted Editable Fields -->
+            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">Whitelisted Profile Fields</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-dark">First Name</label>
+                    <input type="text" name="first_name" value="{{ employee.first_name }}" class="form-control" placeholder="First Name">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-dark">Last Name</label>
+                    <input type="text" name="last_name" value="{{ employee.last_name }}" class="form-control" placeholder="Last Name">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-dark">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" name="email" value="{{ employee.email }}" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-dark">Phone Number</label>
+                    <input type="text" name="phone" value="{{ employee.phone|default:'' }}" class="form-control" placeholder="+91 9876543210">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-dark">Pincode</label>
+                    <input type="text" name="pincode" value="{{ employee.pincode|default:'' }}" class="form-control" placeholder="600001">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small fw-semibold text-dark">Address</label>
+                    <textarea name="address" rows="2" class="form-control" placeholder="Branch address or residential address...">{{ employee.address|default:'' }}</textarea>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                <a href="{% url 'admin_employee_detail' employee.id %}" class="btn btn-outline-secondary rounded-pill px-4">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                    <i class="bi bi-save me-1"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+

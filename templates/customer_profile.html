@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Profile — BEBANK</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="/static/images/bebank_b_monogram.svg">
+
+<style>
+body {
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0f172a;
+    padding-bottom: 110px;
+}
+
+.card {
+    border-radius: 18px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(10, 25, 47, 0.05);
+}
+
+.font-mono {
+    font-family: 'Consolas', 'SF Mono', 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+.btn-primary-navy {
+    background: #0a192f;
+    border-color: #0a192f;
+    color: #ffffff;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+.btn-primary-navy:hover {
+    background: #112240;
+    border-color: #112240;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.progress {
+    height: 10px;
+    border-radius: 9999px;
+    background-color: #e2e8f0;
+}
+
+/* Toast alert */
+.toast-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 18px;
+    color: white;
+    border-radius: 8px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: 0.4s;
+}
+.toast-box.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast-success { background: #16a34a; }
+.toast-error { background: #dc2626; }
+
+
+</style>
+</head>
+
+<body>
+
+<div class="container mt-4" style="max-width: 860px;">
+
+    <!-- Top Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1" style="color: #0a192f;">
+                <i class="bi bi-person-circle me-2"></i>Customer Profile
+            </h4>
+            <p class="text-muted small mb-0">View your verified contact information and account details.</p>
+        </div>
+        <div>
+            <a href="{% url 'customer_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Security & Branch-Managed Profile Notice Banner -->
+    <div class="alert alert-info border-0 shadow-sm d-flex align-items-start gap-3 p-3 mb-4 rounded-3" style="background: #e0f2fe; color: #0369a1;">
+        <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+        <div>
+            <div class="fw-bold mb-1">Branch-Managed Customer Profile</div>
+            <div class="small">
+                For enhanced security, personal profile and contact modifications are processed by BEBANK branch personnel.
+                If you need to update your registered name, phone, email, or residential address, please visit your local branch or
+                <a href="{% url 'support_ticket_create' %}" class="fw-semibold text-decoration-underline" style="color: #0284c7;">submit a Support Ticket</a>.
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Completeness & Status Overview Card -->
+    <div class="card p-4 mb-4">
+        <div class="row align-items-center g-3">
+            <div class="col-md-7">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-primary" style="width: 58px; height: 58px; font-size: 28px; border: 2px solid #e2e8f0;">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">{{ user.get_full_name|default:user.username }}</h5>
+                        <div class="small text-muted">
+                            Username: <span class="font-mono text-dark fw-semibold">{{ user.username }}</span> &bull; Role: <span class="badge bg-secondary-subtle text-secondary border">Customer</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="p-3 rounded-3 bg-light border">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small fw-semibold text-muted">Profile Completeness</span>
+                        <span class="small fw-bold text-dark">{{ completeness }}%</span>
+                    </div>
+                    <div class="progress mb-2">
+                        <div class="progress-bar {% if completeness >= 80 %}bg-success{% elif completeness >= 50 %}bg-primary{% else %}bg-warning{% endif %}" role="progressbar" style="width: {{ completeness }}%;" aria-valuenow="{{ completeness }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">KYC Status:</span>
+                        {% if user.kyc_status == 'APPROVED' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                <i class="bi bi-patch-check-fill me-1"></i> Verified Active
+                            </span>
+                        {% elif user.kyc_status == 'PENDING' %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
+                                <i class="bi bi-clock me-1"></i> Pending Verification
+                            </span>
+                        {% elif user.kyc_status == 'UNDER_REVIEW' %}
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1">
+                                <i class="bi bi-eye me-1"></i> Under Review
+                            </span>
+                        {% elif user.kyc_status == 'REJECTED' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Rejected
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border px-2 py-1">
+                                Not Submitted
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="text-end mt-1">
+                        <a href="{% url 'customer_kyc' %}" class="small text-decoration-none fw-semibold">View KYC Details &rarr;</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Read-Only Personal & Contact Details Card -->
+    <div class="card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0" style="color: #0a192f;">
+                <i class="bi bi-person-lines-fill me-1"></i> Personal &amp; Contact Details
+            </h6>
+            <span class="badge bg-light text-secondary border">Branch Managed</span>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border">
+                    <span class="small text-muted d-block">First Name</span>
+                    <strong class="text-dark">{{ user.first_name|default:"Not specified" }}</strong>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border">
+                    <span class="small text-muted d-block">Last Name</span>
+                    <strong class="text-dark">{{ user.last_name|default:"Not specified" }}</strong>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border">
+                    <span class="small text-muted d-block">Email Address</span>
+                    <strong class="text-dark">{{ user.email|default:"Not specified" }}</strong>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 border">
+                    <span class="small text-muted d-block">Phone Number</span>
+                    <strong class="text-dark font-mono">{{ user.phone|default:"Not specified" }}</strong>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="p-3 bg-light rounded-3 border">
+                    <span class="small text-muted d-block">Residential Address</span>
+                    <strong class="text-dark">{{ user.address|default:"Not specified" }}</strong>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded-3 border">
+                    <span class="small text-muted d-block">Pincode / Postal Code</span>
+                    <strong class="text-dark font-mono">{{ user.pincode|default:"Not specified" }}</strong>
+                </div>
+            </div>
+
+            <!-- Protected Security Fields (Read-Only) -->
+            <div class="col-12 mt-3 pt-3 border-top">
+                <span class="small text-muted fw-semibold d-block mb-2">Protected Security Attributes</span>
+                <div class="row g-2">
+                    <div class="col-sm-4">
+                        <div class="p-2 bg-light rounded border text-muted small">
+                            <strong>Username:</strong> {{ user.username }}
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="p-2 bg-light rounded border text-muted small">
+                            <strong>Role:</strong> {{ user.role }}
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="p-2 bg-light rounded border text-muted small">
+                            <strong>Security Status:</strong> {% if user.account_locked %}Locked 🔒{% else %}Normal Active 🔓{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Linked Bank Accounts -->
+    <div class="card p-4">
+        <h6 class="fw-bold mb-3" style="color: #0a192f;">
+            <i class="bi bi-bank me-1"></i> My Bank Accounts
+        </h6>
+        {% if accounts %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th>Account Number</th>
+                        <th>Type</th>
+                        <th>Balance</th>
+                        <th>Opening Date</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for acc in accounts %}
+                    <tr>
+                        <td><span class="font-mono fw-bold text-dark">{{ acc.account_number }}</span></td>
+                        <td><span class="badge bg-light text-dark border">{{ acc.account_type }}</span></td>
+                        <td><span class="font-mono fw-bold text-success">₹{{ acc.balance }}</span></td>
+                        <td><span class="small text-muted">{{ acc.created_at|date:"d M Y" }}</span></td>
+                        <td class="text-end">
+                            <a href="{% url 'history_detail' acc.id %}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-clock-history"></i> History
+                            </a>
+                            <a href="{% url 'transfer' %}" class="btn btn-sm btn-outline-primary ms-1">
+                                <i class="bi bi-arrow-left-right"></i> Transfer
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">No linked bank accounts found.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Toast Feedback Notifications -->
+{% if messages %}
+{% for message in messages %}
+<div class="toast-box show {% if message.tags == 'error' %}toast-error{% else %}toast-success{% endif %}">
+    {{ message }}
+</div>
+{% endfor %}
+<script>
+setTimeout(() => {
+    document.querySelectorAll(".toast-box").forEach(el => el.classList.remove("show"));
+}, 3500);
+</script>
+{% endif %}
+
+<!-- Bottom Navigation Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="profile" %}
+
+{% include "includes/submit_guard.html" %}
+
+</body>
+</html>

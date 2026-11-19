@@ -1,0 +1,206 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Bank Account Governance Directory — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Header & Action -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Account Oversight &amp; Ledger
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Bank Account Governance Directory
+            </h3>
+            <p class="text-muted small mb-0">System-wide surveillance of customer ledger accounts, debit freeze states &amp; balances.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            <a href="{% url 'admin_customer_list' %}" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-sm">
+                <i class="bi bi-people me-1"></i> Customer Directory
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Filter & Search Card -->
+    <div class="card p-3 p-md-4 mb-4 border shadow-sm rounded-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <!-- Search Query -->
+            <div class="col-12 col-md-5">
+                <label class="form-label small fw-semibold text-muted">Search Accounts</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control bg-light border-start-0" placeholder="A/C number, customer name, username, email...">
+                </div>
+            </div>
+
+            <!-- Account Type Filter -->
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Account Type</label>
+                <select name="type" class="form-select bg-light">
+                    <option value="" {% if not selected_type %}selected{% endif %}>All Types</option>
+                    <option value="SAVINGS" {% if selected_type == 'SAVINGS' %}selected{% endif %}>Savings Account</option>
+                    <option value="CURRENT" {% if selected_type == 'CURRENT' %}selected{% endif %}>Current Account</option>
+                </select>
+            </div>
+
+            <!-- Freeze Status Filter -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Status</label>
+                <select name="status" class="form-select bg-light">
+                    <option value="" {% if not selected_status %}selected{% endif %}>All</option>
+                    <option value="ACTIVE" {% if selected_status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                    <option value="FROZEN" {% if selected_status == 'FROZEN' %}selected{% endif %}>Frozen</option>
+                </select>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100 rounded-3">
+                    Filter
+                </button>
+                {% if query or selected_type or selected_status %}
+                <a href="{% url 'admin_account_list' %}" class="btn btn-outline-secondary rounded-3" title="Clear Filters">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Account Table Card -->
+    <div class="card border shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-muted small text-uppercase">
+                        <th class="ps-3">Account Number</th>
+                        <th>Account Holder</th>
+                        <th>Type</th>
+                        <th>Ledger Balance</th>
+                        <th>Governance Status</th>
+                        <th>Created Date</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for acc in page_obj %}
+                    <tr>
+                        <td class="ps-3">
+                            <a href="{% url 'admin_account_detail' acc.id %}" class="fw-bold font-mono text-dark text-decoration-none d-block">
+                                #••••{{ acc.account_number|slice:"-4:" }}
+                            </a>
+                            <span class="font-mono text-muted small">{{ acc.account_number }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 32px; height: 32px; background: #0284c7; font-size: 0.8rem;">
+                                    {{ acc.user.first_name|first|default:acc.user.username|first|upper }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'admin_customer_detail' acc.user.id %}" class="fw-bold text-dark text-decoration-none d-block small">
+                                        {{ acc.user.get_full_name|default:acc.user.username }}
+                                    </a>
+                                    <span class="font-mono text-muted small">@{{ acc.user.username }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border small">{{ acc.get_account_type_display|default:acc.account_type }}</span>
+                        </td>
+                        <td>
+                            <span class="font-mono fw-bold text-success fs-6">
+                                ₹{{ acc.balance|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if acc.is_frozen %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 small">
+                                    <i class="bi bi-snow me-1"></i> FROZEN
+                                </span>
+                                {% if acc.freeze_reason %}
+                                <div class="text-muted small mt-1 text-truncate" style="max-width: 180px;" title="{{ acc.freeze_reason }}">
+                                    {{ acc.freeze_reason }}
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
+                                    <i class="bi bi-check2-circle me-1"></i> ACTIVE
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="font-mono small text-muted">
+                            {{ acc.created_at|date:"Y-m-d" }}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'admin_account_detail' acc.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                <i class="bi bi-shield-shaded me-1"></i> Surveillance
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-wallet2 fs-1 d-block mb-2 text-secondary"></i>
+                            <h6 class="fw-bold mb-1">No bank accounts found</h6>
+                            <p class="small mb-0">No account records match your search or filter criteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="p-3 border-top d-flex justify-content-between align-items-center">
+            <span class="text-muted small">
+                Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} accounts
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&type={{ selected_type }}&status={{ selected_status }}">&laquo;</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ query }}&type={{ selected_type }}&status={{ selected_status }}">{{ num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ query }}&type={{ selected_type }}&status={{ selected_status }}">&raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

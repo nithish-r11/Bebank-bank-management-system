@@ -1,0 +1,213 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}Staff Card Inspection #{{ card.id }} — BEBANK{% endblock %}
+
+{% block content %}
+<style>
+/* Toast alert */
+.toast-box {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 18px;
+    color: white;
+    border-radius: 8px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: 0.4s;
+}
+.toast-box.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.toast-success { background: #16a34a; }
+.toast-error { background: #dc2626; }
+</style>
+
+<div class="container" style="max-width: 920px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="fw-bold mb-0">Card #{{ card.id }} Compliance & Audit View</h4>
+            <span class="text-muted small">Customer Account Holder: <strong>{{ card.user.username }}</strong> &bull; Masked: {{ card.masked_card_number }}</span>
+        </div>
+        <div>
+            {% if card.status == "ACTIVE" %}
+                <span class="badge bg-success fs-6">ACTIVE</span>
+            {% elif card.status == "BLOCKED" %}
+                <span class="badge bg-warning text-dark fs-6">BLOCKED</span>
+            {% elif card.status == "CANCELLED" %}
+                <span class="badge bg-secondary fs-6">CANCELLED</span>
+            {% elif card.status == "EXPIRED" %}
+                <span class="badge bg-danger fs-6">EXPIRED</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Overview Card -->
+    <div class="card p-4 mb-4">
+        <h5 class="fw-bold mb-3" style="color: #0a192f;">
+            <i class="bi bi-credit-card me-2 text-primary"></i>Card Profile Details
+        </h5>
+
+        <div class="row g-3 font-mono small">
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Masked Card Identifier</span>
+                <span class="fw-bold text-dark fs-6">{{ card.masked_card_number }}</span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Linked Bank Account</span>
+                <span class="fw-bold text-dark fs-6">{{ card.account.account_number }} ({{ card.account.account_type }})</span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Cardholder Name</span>
+                <span class="fw-bold text-dark fs-6">{{ card.cardholder_name }}</span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Card Product / Tier</span>
+                <span class="fw-bold text-primary fs-6">{{ card.get_card_type_display }}</span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Daily Simulation Limit</span>
+                <span class="fw-bold text-dark fs-6">₹{{ card.daily_limit }}</span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Validity (Expiry)</span>
+                <span class="fw-bold text-dark fs-6">{{ card.expiry_display }}</span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Admin Suspended</span>
+                <span class="fw-bold {% if card.blocked_by_admin %}text-danger{% else %}text-success{% endif %} fs-6">
+                    {{ card.blocked_by_admin|yesno:"YES,NO" }}
+                </span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Issue Date</span>
+                <span class="text-dark fs-6">{{ card.issue_date|date:"d M Y" }}</span>
+            </div>
+            <div class="col-md-4 col-6">
+                <span class="text-muted d-block">Simulation Status</span>
+                <span class="text-muted fs-6">ACADEMIC SIMULATION</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Administrative Action Panel (ADMIN ONLY) -->
+    {% if request.user.role == "ADMIN" %}
+    <div class="card p-4 mb-4 border-warning" style="background: #fffdf8;">
+        <h5 class="fw-bold mb-2 text-dark">
+            <i class="bi bi-shield-exclamation me-2 text-warning"></i>Administrator Override Controls
+        </h5>
+        <p class="text-muted small mb-3">All actions are recorded in the compliance audit log with your operator ID and reason.</p>
+
+        <form method="POST" action="{% url 'admin_card_action' card.id %}">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-muted">Administrative Reason / Justification</label>
+                <input type="text" name="reason" class="form-control" placeholder="e.g. Compliance review / customer request / suspected compromise" required>
+            </div>
+
+            <div class="d-flex gap-2">
+                {% if card.status == "ACTIVE" %}
+                    <button type="submit" name="action_type" value="block" class="btn btn-warning btn-sm px-3" onclick="return confirm('Administratively block card {{ card.masked_card_number }}?');">
+                        <i class="bi bi-lock me-1"></i>Suspend / Block Card
+                    </button>
+                    <button type="submit" name="action_type" value="cancel" class="btn btn-danger btn-sm px-3" onclick="return confirm('Permanently cancel card {{ card.masked_card_number }}?');">
+                        <i class="bi bi-x-circle me-1"></i>Permanently Cancel Card
+                    </button>
+                {% elif card.status == "BLOCKED" %}
+                    <button type="submit" name="action_type" value="unblock" class="btn btn-success btn-sm px-3" onclick="return confirm('Unblock card {{ card.masked_card_number }}?');">
+                        <i class="bi bi-unlock me-1"></i>Unblock Card
+                    </button>
+                    <button type="submit" name="action_type" value="cancel" class="btn btn-danger btn-sm px-3" onclick="return confirm('Permanently cancel card {{ card.masked_card_number }}?');">
+                        <i class="bi bi-x-circle me-1"></i>Permanently Cancel Card
+                    </button>
+                {% else %}
+                    <span class="badge bg-secondary py-2 px-3">Card is permanently cancelled or expired. No further actions permitted.</span>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <!-- Audit Log Trail Table -->
+    <div class="card p-4">
+        <h5 class="fw-bold mb-3" style="color: #0a192f;">
+            <i class="bi bi-file-earmark-text me-2 text-primary"></i>Compliance Audit Log
+        </h5>
+
+        {% if audit_logs %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 font-mono small">
+                <thead class="table-light">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Action Performed</th>
+                        <th>Operator / Actor</th>
+                        <th>Role</th>
+                        <th>Reason / Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td class="text-nowrap">{{ log.timestamp|date:"d M Y H:i:s" }}</td>
+                        <td>
+                            {% if "ADMIN" in log.action %}
+                                <span class="badge bg-danger">{{ log.get_action_display }}</span>
+                            {% elif "INSPECTED" in log.action %}
+                                <span class="badge bg-info text-dark">{{ log.get_action_display }}</span>
+                            {% elif "BLOCKED" in log.action %}
+                                <span class="badge bg-warning text-dark">{{ log.get_action_display }}</span>
+                            {% elif "CANCELLED" in log.action %}
+                                <span class="badge bg-dark">{{ log.get_action_display }}</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ log.get_action_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.performed_by.username|default:"System" }}</td>
+                        <td>
+                            {% if log.performed_by %}
+                                <span class="badge bg-light text-dark border">{{ log.performed_by.role }}</span>
+                            {% else %}
+                                <span class="badge bg-light text-muted">SYSTEM</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted">{{ log.reason|default:"--" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted small">
+            <em>No audit entries found for this card.</em>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Toast Box -->
+{% if messages %}
+<div id="toast" class="toast-box"></div>
+<script>
+const toast = document.getElementById("toast");
+{% for message in messages %}
+    toast.innerText = "{{ message }}";
+    toast.classList.add("show");
+    {% if message.tags == 'error' %}
+        toast.classList.add("toast-error");
+    {% else %}
+        toast.classList.add("toast-success");
+    {% endif %}
+    setTimeout(() => { toast.classList.remove("show"); }, 4000);
+{% endfor %}
+</script>
+{% endif %}
+
+{% include "includes/submit_guard.html" %}
+{% endblock %}
+

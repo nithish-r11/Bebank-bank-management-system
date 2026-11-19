@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create Support Ticket — BEBANK</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="/static/images/bebank_b_monogram.svg">
+
+<style>
+body {
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0f172a;
+    padding-bottom: 90px;
+}
+.card {
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(10, 25, 47, 0.05);
+}
+.btn-primary-navy {
+    background: #0a192f;
+    border-color: #0a192f;
+    color: #ffffff;
+    font-weight: 600;
+}
+.btn-primary-navy:hover {
+    background: #112240;
+    border-color: #112240;
+    color: #ffffff;
+}
+.form-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+</style>
+</head>
+
+<body>
+<div class="container mt-4" style="max-width: 720px;">
+
+    <!-- Top Bar -->
+    <div class="mb-4">
+        <a href="{% url 'support_ticket_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-2">
+            <i class="bi bi-arrow-left"></i> My Tickets
+        </a>
+        <h4 class="d-inline-block align-middle mb-0 fw-bold text-dark">
+            Open New Support Ticket
+        </h4>
+    </div>
+
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card p-4 bg-white">
+        <form method="POST" action="{% url 'support_ticket_create' %}">
+            {% csrf_token %}
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="categorySelect">Inquiry Category <span class="text-danger">*</span></label>
+                    <select name="category" id="categorySelect" class="form-select" required>
+                        <option value="">Select Category...</option>
+                        {% for code, label in category_choices %}
+                        <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label" for="prioritySelect">Priority Level</label>
+                    <select name="priority" id="prioritySelect" class="form-select">
+                        {% for code, label in priority_choices %}
+                        <option value="{{ code }}" {% if code == 'MEDIUM' %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="subjectInput">Subject <span class="text-danger">*</span></label>
+                <input type="text" name="subject" id="subjectInput" class="form-control" placeholder="Brief summary of your query or problem" minlength="4" maxlength="150" required>
+                <div class="form-text">Keep it clear and specific (4 to 150 characters).</div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label" for="descTextarea">Detailed Description <span class="text-danger">*</span></label>
+                <textarea name="description" id="descTextarea" class="form-control" rows="5" placeholder="Please provide all relevant details, including transaction reference IDs, dates, or error descriptions." minlength="10" required></textarea>
+                <div class="form-text">Never share your login passwords, PINs, or sensitive credentials.</div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                <a href="{% url 'support_ticket_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary-navy rounded-pill px-4">
+                    <i class="bi bi-send me-1"></i> Submit Ticket
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<!-- Bottom Navigation Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="support" %}
+
+{% include "includes/submit_guard.html" %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

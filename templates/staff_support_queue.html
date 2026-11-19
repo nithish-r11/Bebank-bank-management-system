@@ -1,0 +1,278 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}Staff Support Queue — BEBANK{% endblock %}
+
+{% block content %}
+<style>
+.stat-pill {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 16px;
+    text-decoration: none;
+    color: #334155;
+    transition: all 0.2s ease;
+}
+.stat-pill:hover, .stat-pill.active {
+    background: #0a192f;
+    color: #ffffff;
+    border-color: #0a192f;
+}
+.stat-pill.active .badge-count {
+    background: #ffffff !important;
+    color: #0a192f !important;
+}
+.badge-count {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+}
+.ticket-table tr {
+    transition: background 0.15s ease;
+}
+.ticket-table tr:hover {
+    background: #f8fafc;
+}
+</style>
+
+<div class="container-fluid px-2 px-md-4" style="max-width: 1320px;">
+
+    <!-- Top Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1" style="color: var(--bebank-navy-primary);">
+                <i class="bi bi-headset text-primary me-2"></i>Staff Support Helpdesk &amp; Queue
+            </h3>
+            <p class="text-muted small mb-0">Manage customer inquiry tickets, triage by priority, and resolve cases.</p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if request.user.role == 'ADMIN' %}
+            <a href="/admin-dashboard/" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-2">
+                <i class="bi bi-arrow-left me-1"></i> Admin Panel
+            </a>
+            {% else %}
+            <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-2">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Metric Tabs / Quick Filters -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a href="{% url 'staff_support_queue' %}" class="stat-pill d-flex align-items-center gap-2 {% if not selected_status and not selected_assigned %}active{% endif %}">
+            <span>All Tickets</span>
+        </a>
+        <a href="?assigned=me" class="stat-pill d-flex align-items-center gap-2 {% if selected_assigned == 'me' %}active{% endif %}">
+            <span><i class="bi bi-person-check"></i> Assigned to Me</span>
+            <span class="badge badge-count rounded-pill">{{ assigned_to_me_count }}</span>
+        </a>
+        <a href="?assigned=unassigned" class="stat-pill d-flex align-items-center gap-2 {% if selected_assigned == 'unassigned' %}active{% endif %}">
+            <span><i class="bi bi-question-circle"></i> Unassigned</span>
+            <span class="badge badge-count rounded-pill">{{ unassigned_count }}</span>
+        </a>
+        <a href="?status=OPEN" class="stat-pill d-flex align-items-center gap-2 {% if selected_status == 'OPEN' %}active{% endif %}">
+            <span>Open</span>
+            <span class="badge badge-count rounded-pill">{{ open_count }}</span>
+        </a>
+        <a href="?status=IN_PROGRESS" class="stat-pill d-flex align-items-center gap-2 {% if selected_status == 'IN_PROGRESS' %}active{% endif %}">
+            <span>In Progress</span>
+            <span class="badge badge-count rounded-pill">{{ in_progress_count }}</span>
+        </a>
+        <a href="?status=WAITING_FOR_CUSTOMER" class="stat-pill d-flex align-items-center gap-2 {% if selected_status == 'WAITING_FOR_CUSTOMER' %}active{% endif %}">
+            <span>Waiting Customer</span>
+            <span class="badge badge-count rounded-pill">{{ waiting_count }}</span>
+        </a>
+        <a href="?status=RESOLVED" class="stat-pill d-flex align-items-center gap-2 {% if selected_status == 'RESOLVED' %}active{% endif %}">
+            <span>Resolved</span>
+            <span class="badge badge-count rounded-pill">{{ resolved_count }}</span>
+        </a>
+        <a href="?status=CLOSED" class="stat-pill d-flex align-items-center gap-2 {% if selected_status == 'CLOSED' %}active{% endif %}">
+            <span>Closed</span>
+            <span class="badge badge-count rounded-pill">{{ closed_count }}</span>
+        </a>
+    </div>
+
+    <!-- Search & Advanced Filter Bar -->
+    <div class="card p-3 mb-4 bg-white">
+        <form method="GET" action="{% url 'staff_support_queue' %}" class="row g-2 align-items-center">
+            <div class="col-12 col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Search ticket #, customer, or subject...">
+                </div>
+            </div>
+
+            <div class="col-6 col-md-2">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    {% for code, label in status_choices %}
+                    <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-6 col-md-2">
+                <select name="category" class="form-select form-select-sm">
+                    <option value="">All Categories</option>
+                    {% for code, label in category_choices %}
+                    <option value="{{ code }}" {% if selected_category == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-6 col-md-2">
+                <select name="priority" class="form-select form-select-sm">
+                    <option value="">All Priorities</option>
+                    {% for code, label in priority_choices %}
+                    <option value="{{ code }}" {% if selected_priority == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-6 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary-navy btn-sm rounded-pill w-100">
+                    Apply Filter
+                </button>
+                <a href="{% url 'staff_support_queue' %}" class="btn btn-outline-secondary btn-sm rounded-pill" title="Reset Filters">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tickets Table -->
+    {% if tickets %}
+    <div class="card bg-white shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 ticket-table">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3 py-3" style="font-size: 13px;">Ticket ID</th>
+                        <th style="font-size: 13px;">Customer</th>
+                        <th style="font-size: 13px;">Subject &amp; Category</th>
+                        <th style="font-size: 13px;">Priority</th>
+                        <th style="font-size: 13px;">Status</th>
+                        <th style="font-size: 13px;">Assigned To</th>
+                        <th style="font-size: 13px;">Last Activity</th>
+                        <th class="text-end pe-3" style="font-size: 13px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tickets %}
+                    <tr>
+                        <td class="ps-3 py-3">
+                            <span class="font-mono fw-bold text-dark" style="font-size: 13px;">{{ t.ticket_number }}</span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ t.customer.username }}</div>
+                            <small class="text-muted">{{ t.customer.email|default:"" }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ t.subject }}</div>
+                            <span class="badge bg-light text-muted border" style="font-size: 11px;">
+                                {{ t.get_category_display }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if t.priority == 'URGENT' %}
+                            <span class="badge bg-danger">Urgent</span>
+                            {% elif t.priority == 'HIGH' %}
+                            <span class="badge bg-warning text-dark">High</span>
+                            {% elif t.priority == 'MEDIUM' %}
+                            <span class="badge bg-primary-subtle text-primary border">Medium</span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border">Low</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.status == 'OPEN' %}
+                            <span class="badge bg-primary">Open</span>
+                            {% elif t.status == 'IN_PROGRESS' %}
+                            <span class="badge bg-info text-dark">In Progress</span>
+                            {% elif t.status == 'WAITING_FOR_CUSTOMER' %}
+                            <span class="badge bg-warning text-dark">Waiting Customer</span>
+                            {% elif t.status == 'RESOLVED' %}
+                            <span class="badge bg-success">Resolved</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Closed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.assigned_to %}
+                            <span class="badge bg-light text-dark border">
+                                <i class="bi bi-person me-1"></i>{{ t.assigned_to.username }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted small fst-italic">Unassigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-muted small">{{ t.updated_at|date:"d M, H:i" }}</span>
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'staff_support_detail' t.id %}" class="btn btn-primary-navy btn-sm rounded-pill px-3">
+                                Inspect &amp; Reply &rarr;
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-4" aria-label="Staff Ticket pagination">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_status %}&amp;status={{ selected_status }}{% endif %}{% if selected_category %}&amp;category={{ selected_category }}{% endif %}{% if selected_priority %}&amp;priority={{ selected_priority }}{% endif %}{% if selected_assigned %}&amp;assigned={{ selected_assigned }}{% endif %}{% if search_query %}&amp;q={{ search_query }}{% endif %}">&laquo; Previous</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link bg-dark border-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_status %}&amp;status={{ selected_status }}{% endif %}{% if selected_category %}&amp;category={{ selected_category }}{% endif %}{% if selected_priority %}&amp;priority={{ selected_priority }}{% endif %}{% if selected_assigned %}&amp;assigned={{ selected_assigned }}{% endif %}{% if search_query %}&amp;q={{ search_query }}{% endif %}">Next &raquo;</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="card p-5 text-center bg-white">
+        <div class="mb-3">
+            <i class="bi bi-inbox text-muted" style="font-size: 48px;"></i>
+        </div>
+        <h5 class="fw-bold">No Tickets in this Queue</h5>
+        <p class="text-muted small">No tickets currently match the selected queue criteria.</p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% include "includes/submit_guard.html" %}
+{% endblock %}
+

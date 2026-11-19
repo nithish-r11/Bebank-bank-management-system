@@ -1,0 +1,456 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}Customer 360°: {{ target_user.username }} — BEBANK{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4" style="max-width: 1320px;">
+
+    <!-- Top Navigation & Profile Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'staff_customer_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Customer Directory
+                </a>
+                <span class="badge bg-secondary-subtle text-secondary">Customer ID #{{ target_user.id }}</span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                {{ target_user.get_full_name|default:target_user.username }}
+                <code class="text-primary small fs-6 ms-1">@{{ target_user.username }}</code>
+            </h3>
+        </div>
+
+        <!-- Action Toolbar -->
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'staff_customer_profile_edit' target_user.id %}" class="btn btn-outline-primary btn-sm px-3 rounded-pill shadow-sm">
+                <i class="bi bi-pencil-square me-1"></i> Edit Contact Profile
+            </a>
+            {% if target_user.kyc_status != 'APPROVED' %}
+            <a href="{% url 'staff_kyc_queue' %}?q={{ target_user.username }}" class="btn btn-warning btn-sm px-3 rounded-pill shadow-sm">
+                <i class="bi bi-shield-check me-1"></i> Review KYC
+            </a>
+            {% endif %}
+            {% if accounts %}
+            <a href="{% url 'deposit' %}?account_number={{ accounts.0.account_number }}" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Cash Deposit
+            </a>
+            <a href="{% url 'staff_withdraw' %}?account_number={{ accounts.0.account_number }}" class="btn btn-danger btn-sm px-3 rounded-pill shadow-sm">
+                <i class="bi bi-dash-circle me-1"></i> Cash Withdraw
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+        <!-- ================= LEFT COLUMN ================= -->
+        <div class="col-lg-7">
+
+            <!-- Profile & Personal Details -->
+            <div class="card p-4 border-0 shadow-sm bg-white mb-4">
+                <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-person-bounding-box text-primary me-2"></i>Contact &amp; Profile Summary
+                    </h5>
+                    <span class="badge bg-light text-secondary border">Profile Completeness: {{ completeness }}%</span>
+                </div>
+
+                <div class="progress mb-4" style="height: 6px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ completeness }}%;" aria-valuenow="{{ completeness }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+
+                <div class="row g-3 small">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">First Name</span>
+                            <span class="fw-bold text-dark fs-6">{{ target_user.first_name|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">Last Name</span>
+                            <span class="fw-bold text-dark fs-6">{{ target_user.last_name|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">Email Address</span>
+                            <span class="fw-bold text-dark">{{ target_user.email|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">Phone Number</span>
+                            <span class="fw-bold text-dark font-mono">{{ target_user.phone|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">Aadhaar (Masked)</span>
+                            <span class="fw-bold text-dark font-mono">{{ masked_aadhaar }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">PAN (Masked)</span>
+                            <span class="fw-bold text-dark font-mono">{{ masked_pan }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-8">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">Address</span>
+                            <span class="fw-bold text-dark">{{ target_user.address|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="text-muted d-block mb-1">Pincode</span>
+                            <span class="fw-bold text-dark font-mono">{{ target_user.pincode|default:"-" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 pt-3 border-top text-muted small d-flex justify-content-between">
+                    <span>Registered: <span class="font-mono">{{ target_user.date_joined|date:"d M Y, H:i" }}</span></span>
+                    <span>Last Login: <span class="font-mono">{{ target_user.last_login|date:"d M Y, H:i"|default:"Never" }}</span></span>
+                </div>
+            </div>
+
+            <!-- Linked Bank Accounts -->
+            <div class="card p-4 border-0 shadow-sm bg-white mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-bank text-primary me-2"></i>Linked Bank Accounts
+                    </h5>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 font-mono fs-6">
+                        Total: ₹{{ total_balance|floatformat:2 }}
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Account Number</th>
+                                <th>Type</th>
+                                <th>Balance</th>
+                                <th>Opened</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for acc in accounts %}
+                            <tr>
+                                <td class="font-mono fw-bold text-dark">{{ acc.account_number }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ acc.account_type }}</span></td>
+                                <td class="font-mono fw-bold text-success">₹{{ acc.balance }}</td>
+                                <td class="text-muted font-mono">{{ acc.created_at|date:"d M Y" }}</td>
+                                <td class="text-end">
+                                    <a href="{% url 'deposit' %}?account_number={{ acc.account_number }}" class="btn btn-sm btn-outline-success rounded-pill px-2" title="Deposit">
+                                        Deposit
+                                    </a>
+                                    <a href="{% url 'staff_withdraw' %}?account_number={{ acc.account_number }}" class="btn btn-sm btn-outline-danger rounded-pill px-2" title="Withdraw">
+                                        Withdraw
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">No bank accounts linked to this customer.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Transaction Summary -->
+            <div class="card p-4 border-0 shadow-sm bg-white mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-clock-history text-primary me-2"></i>Recent Transaction Ledger
+                    </h5>
+                    <span class="small text-muted">Latest 15 ledger movements</span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Balance After</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in transactions %}
+                            <tr>
+                                <td class="font-mono text-muted">{{ tx.created_at|date:"d M, H:i" }}</td>
+                                <td class="font-mono">{{ tx.account.account_number }}</td>
+                                <td>
+                                    {% if tx.transaction_type == 'DEPOSIT' %}
+                                    <span class="badge bg-success-subtle text-success">DEPOSIT</span>
+                                    {% elif tx.transaction_type == 'WITHDRAW' %}
+                                    <span class="badge bg-danger-subtle text-danger">WITHDRAW</span>
+                                    {% elif tx.transaction_type == 'TRANSFER' %}
+                                    <span class="badge bg-primary-subtle text-primary">TRANSFER</span>
+                                    {% elif tx.transaction_type == 'LOAN_DISBURSEMENT' %}
+                                    <span class="badge bg-info-subtle text-info">LOAN DISBURSE</span>
+                                    {% elif tx.transaction_type == 'LOAN_REPAYMENT' %}
+                                    <span class="badge bg-dark-subtle text-dark">LOAN REPAY</span>
+                                    {% elif tx.transaction_type == 'FD_CREATION' %}
+                                    <span class="badge bg-warning-subtle text-warning">FD CREATE</span>
+                                    {% elif tx.transaction_type == 'FD_CLOSURE' %}
+                                    <span class="badge bg-secondary-subtle text-secondary">FD CLOSE</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary">{{ tx.transaction_type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="font-mono fw-bold {% if tx.transaction_type in 'DEPOSIT,LOAN_DISBURSEMENT,FD_CLOSURE' %}text-success{% else %}text-danger{% endif %}">
+                                    ₹{{ tx.amount }}
+                                </td>
+                                <td class="font-mono text-muted">₹{{ tx.balance_after|default:"-" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">No transaction records found for this customer.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= RIGHT COLUMN ================= -->
+        <div class="col-lg-5">
+
+            <!-- Simulated KYC Details & Action Card -->
+            <div class="card p-4 border-0 shadow-sm bg-white mb-4">
+                <div class="d-flex justify-content-between align-items-center pb-2 mb-3 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-shield-check text-success me-2"></i>Simulated KYC Status
+                    </h5>
+                    <div>
+                        {% if target_user.kyc_status == 'APPROVED' or target_user.kyc_verified %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">
+                            <i class="bi bi-patch-check-fill me-1"></i> Approved
+                        </span>
+                        {% elif target_user.kyc_status == 'PENDING' %}
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-1">
+                            <i class="bi bi-clock me-1"></i> Pending
+                        </span>
+                        {% elif target_user.kyc_status == 'UNDER_REVIEW' %}
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-1">
+                            <i class="bi bi-eye me-1"></i> Under Review
+                        </span>
+                        {% elif target_user.kyc_status == 'REJECTED' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1">
+                            <i class="bi bi-x-circle me-1"></i> Rejected
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary border px-3 py-1">
+                            Not Submitted
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="small">
+                    <p class="mb-1"><strong>Document Type:</strong> {{ target_user.get_simulated_id_type_display|default:target_user.simulated_id_type|default:"Not specified" }}</p>
+                    <p class="mb-1"><strong>Masked Ref ID:</strong> <span class="font-mono text-dark fw-bold">{{ masked_simulated_id }}</span></p>
+                    {% if target_user.kyc_submitted_at %}
+                    <p class="mb-1"><strong>Submitted:</strong> <span class="font-mono text-muted">{{ target_user.kyc_submitted_at|date:"d M Y, H:i" }}</span></p>
+                    {% endif %}
+                    {% if target_user.kyc_reviewed_by %}
+                    <p class="mb-1"><strong>Reviewer:</strong> <code>{{ target_user.kyc_reviewed_by.username }}</code></p>
+                    {% endif %}
+                    {% if target_user.kyc_reviewed_at %}
+                    <p class="mb-1"><strong>Reviewed At:</strong> <span class="font-mono text-muted">{{ target_user.kyc_reviewed_at|date:"d M Y, H:i" }}</span></p>
+                    {% endif %}
+                    {% if target_user.kyc_rejection_reason %}
+                    <div class="alert alert-danger p-2 mt-2 mb-0 rounded-3">
+                        <strong>Rejection Reason:</strong> {{ target_user.kyc_rejection_reason }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Quick Review Actions (POST-only) -->
+                {% if target_user.kyc_status in 'PENDING,UNDER_REVIEW' %}
+                <div class="mt-3 pt-3 border-top">
+                    <div class="d-flex gap-2 mb-2">
+                        <form method="post" action="{% url 'staff_kyc_review' target_user.id %}" class="flex-grow-1">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit" class="btn btn-success btn-sm w-100 fw-semibold rounded-pill" onclick="return confirm('Approve simulated KYC for {{ target_user.username }}?');">
+                                <i class="bi bi-check-lg me-1"></i> Approve KYC
+                            </button>
+                        </form>
+
+                        {% if target_user.kyc_status == 'PENDING' %}
+                        <form method="post" action="{% url 'staff_kyc_review' target_user.id %}" class="flex-grow-1">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="under_review">
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="submit" class="btn btn-info btn-sm w-100 fw-semibold rounded-pill text-white">
+                                <i class="bi bi-eye me-1"></i> Mark Under Review
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    <!-- Reject Form -->
+                    <form method="post" action="{% url 'staff_kyc_review' target_user.id %}" class="mt-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reject">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="rejection_reason" class="form-control" placeholder="Rejection reason..." required>
+                            <button type="submit" class="btn btn-danger fw-semibold px-3" onclick="return confirm('Reject simulated KYC for {{ target_user.username }}?');">
+                                Reject
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Virtual Debit Cards -->
+            <div class="card p-4 border-0 shadow-sm bg-white mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-credit-card-2-front text-primary me-2"></i>Virtual Debit Cards
+                    </h5>
+                    <span class="badge bg-light text-secondary border">{{ cards|length }} issued</span>
+                </div>
+
+                <div class="list-group list-group-flush small">
+                    {% for c in cards %}
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="font-mono fw-bold text-dark">•••• •••• •••• {{ c.card_number|slice:"-4:" }}</div>
+                            <div class="text-muted">Exp: {{ c.expiry_date|default:"MM/YY" }} | Linked: {{ c.account.account_number }}</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {% if c.status == 'ACTIVE' %}bg-success-subtle text-success{% elif c.status == 'BLOCKED' %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                                {{ c.status }}
+                            </span>
+                            <a href="{% url 'staff_card_detail' c.id %}" class="btn btn-sm btn-link text-decoration-none py-0">Details &rarr;</a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted py-2">No virtual debit cards issued.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Fixed Deposits & Loans Summary -->
+            <div class="card p-4 border-0 shadow-sm bg-white mb-4">
+                <h5 class="fw-bold mb-3 text-dark">
+                    <i class="bi bi-piggy-bank text-warning me-2"></i>Fixed Deposits ({{ fixed_deposits|length }})
+                </h5>
+                <div class="list-group list-group-flush small mb-3">
+                    {% for fd in fixed_deposits %}
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="font-mono fw-bold">₹{{ fd.principal_amount }} ({{ fd.interest_rate }}% • {{ fd.tenure_months }}m)</div>
+                            <div class="text-muted">Matures: {{ fd.maturity_date|date:"d M Y" }}</div>
+                        </div>
+                        <span class="badge bg-light text-dark border">{{ fd.status }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted py-1">No active or past fixed deposits.</div>
+                    {% endfor %}
+                </div>
+
+                <h5 class="fw-bold mb-3 text-dark pt-2 border-top">
+                    <i class="bi bi-cash-stack text-success me-2"></i>Loans ({{ loans|length }})
+                </h5>
+                <div class="list-group list-group-flush small">
+                    {% for ln in loans %}
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="font-mono fw-bold">₹{{ ln.amount }} ({{ ln.interest_rate }}% • {{ ln.tenure_months }}m)</div>
+                            <div class="text-muted">Applied: {{ ln.applied_at|date:"d M Y" }}</div>
+                        </div>
+                        <span class="badge {% if ln.status == 'ACTIVE' %}bg-success-subtle text-success{% elif ln.status == 'PENDING' %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                            {{ ln.status }}
+                        </span>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted py-1">No loans applied or disbursed.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Customer Support Tickets -->
+            <div class="card p-4 border-0 shadow-sm bg-white mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-headset text-primary me-2"></i>Support Tickets ({{ tickets|length }})
+                    </h5>
+                    <a href="{% url 'staff_support_queue' %}" class="small text-decoration-none fw-semibold">Desk &rarr;</a>
+                </div>
+
+                <div class="list-group list-group-flush small">
+                    {% for tk in tickets %}
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold text-dark">{{ tk.subject }}</div>
+                            <div class="text-muted font-mono">#{{ tk.ticket_number }} • {{ tk.created_at|date:"d M" }}</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge {% if tk.status == 'OPEN' %}bg-danger-subtle text-danger{% elif tk.status == 'RESOLVED' %}bg-success-subtle text-success{% else %}bg-info-subtle text-info{% endif %}">
+                                {{ tk.status }}
+                            </span>
+                            <a href="{% url 'staff_support_detail' tk.id %}" class="btn btn-sm btn-link text-decoration-none py-0">View &rarr;</a>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted py-2">No support tickets submitted.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Profile Audit History -->
+            <div class="card p-4 border-0 shadow-sm bg-white">
+                <h5 class="fw-bold mb-3 text-dark">
+                    <i class="bi bi-journal-text text-secondary me-2"></i>Profile Update Audit Log
+                </h5>
+                <div class="list-group list-group-flush small">
+                    {% for al in audit_logs %}
+                    <div class="list-group-item px-0 py-2 border-bottom">
+                        <div class="text-dark fw-semibold">{{ al.changes }}</div>
+                        <div class="text-muted small mt-1 font-mono">
+                            {{ al.updated_at|date:"d M Y, H:i" }} | Staff: {{ al.updated_by.username|default:"System" }}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted py-2">No employee profile updates recorded.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+

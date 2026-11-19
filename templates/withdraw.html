@@ -41,44 +41,7 @@ transform: translateY(0);
 .toast-success{ background:#28a745; }
 .toast-error{ background:#dc3545; }
 
-/* APP NAVBAR */
-.bottom-nav{
-position:fixed;
-bottom:0;
-left:0;
-right:0;
-margin:auto;
-width:100%;
-max-width:520px;
-height:78px;
-background:linear-gradient(120deg,#0f0f10,#1c1c1f);
-border-top-left-radius:28px;
-border-top-right-radius:28px;
-box-shadow:0 -10px 30px rgba(0,0,0,.35);
-display:flex;
-align-items:center;
-justify-content:space-around;
-z-index:9999;
-}
 
-.bottom-nav a{
-flex:1;
-text-align:center;
-color:#9aa0a6;
-font-size:12px;
-text-decoration:none;
-}
-
-.bottom-nav i{
-display:block;
-font-size:22px;
-margin-bottom:4px;
-}
-
-.bottom-nav a.active{
-color:#7b7cff;
-transform:translateY(-6px);
-}
 </style>
 </head>
 
@@ -129,30 +92,8 @@ toast.classList.remove("show");
 </script>
 {% endif %}
 
-<!-- 🔻 NAVBAR -->
-<div class="bottom-nav">
-
-<a href="/customer/dashboard/">
-<i class="bi bi-house"></i>Home
-</a>
-
-<a href="/bank/withdraw/" class="active">
-<i class="bi bi-dash-circle"></i>Withdraw
-</a>
-
-<a href="/bank/transfer/">
-<i class="bi bi-arrow-left-right"></i>Transfer
-</a>
-
-<a href="/bank/history/">
-<i class="bi bi-clock-history"></i>History
-</a>
-
-<a href="/logout/">
-<i class="bi bi-box-arrow-right"></i>Logout
-</a>
-
-</div>
+<!-- Bottom Navigation Component -->
+{% include "includes/customer_bottom_nav.html" with active_tab="withdraw" %}
 
 {% include "includes/submit_guard.html" %}
 

@@ -1,0 +1,253 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Database Backup &amp; Disaster Recovery — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Back & Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Disaster Recovery
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Database Backup &amp; Disaster Recovery
+            </h3>
+            <p class="text-muted small mb-0">Local SQLite transactional snapshot management, storage health &amp; safe recovery procedures.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            <!-- POST Form to create verified backup snapshot -->
+            <form method="POST" action="{% url 'admin_backup_create' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success rounded-pill px-3 shadow-sm fw-semibold" onclick="return confirm('Generate an immediate online SQLite backup snapshot with integrity check?');">
+                    <i class="bi bi-camera-fill me-1"></i> Create Backup Snapshot
+                </button>
+            </form>
+            <a href="{% url 'admin_backup_download' %}" class="btn btn-outline-primary rounded-pill px-3 shadow-sm">
+                <i class="bi bi-download me-1"></i> Download Current DB
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row g-4 mb-4">
+        <!-- Database File Status -->
+        <div class="col-12 col-lg-5">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                    <i class="bi bi-hdd-network text-primary me-2"></i>Live Database Storage Health
+                </h5>
+                <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 border mb-3">
+                    <i class="bi bi-database-fill-check fs-1 text-success"></i>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0 font-mono">{{ db_basename }}</h6>
+                        <span class="text-muted small font-mono">{{ db_size_formatted }} &bull; SQLite v3</span>
+                    </div>
+                </div>
+
+                <div class="table-responsive small">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted py-2">Storage Engine:</td>
+                                <td class="font-mono text-dark fw-semibold py-2">SQLite3 (Transactional)</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Last Modified:</td>
+                                <td class="font-mono text-dark py-2">{{ db_mtime }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Database Path:</td>
+                                <td class="font-mono text-muted text-truncate py-2" style="max-width: 220px;" title="{{ db_path }}">{{ db_path }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted py-2">Integrity Check:</td>
+                                <td class="py-2">
+                                    <span class="badge {% if integrity_status == 'ok' or integrity_status == 'Verified (SQLite3 WAL)' or integrity_status == 'Verified (SQLite3)' %}bg-success-subtle text-success border border-success-subtle{% else %}bg-danger{% endif %} rounded-pill font-mono">
+                                        <i class="bi bi-check2-circle me-1"></i>{{ integrity_status }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Row Inventory -->
+        <div class="col-12 col-lg-7">
+            <div class="card p-4 border shadow-sm rounded-4 h-100">
+                <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                    <i class="bi bi-table text-info me-2"></i>Core Ledger &amp; Entity Inventory
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light">
+                            <tr class="text-muted text-uppercase" style="font-size: 0.72rem;">
+                                <th>Entity / Table</th>
+                                <th>Description</th>
+                                <th class="text-end font-mono">Row Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-people me-2 text-primary"></i>Users</td>
+                                <td class="text-muted">Customers, employees and admin accounts</td>
+                                <td class="text-end font-mono fw-bold">{{ count_users }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-wallet2 me-2 text-success"></i>Bank Accounts</td>
+                                <td class="text-muted">Customer savings and current accounts</td>
+                                <td class="text-end font-mono fw-bold">{{ count_accounts }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-receipt me-2 text-info"></i>Bank Transactions</td>
+                                <td class="text-muted">Deposits, withdrawals, transfers</td>
+                                <td class="text-end font-mono fw-bold">{{ count_transactions }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-cash-stack me-2 text-warning"></i>Loans</td>
+                                <td class="text-muted">Loan applications, status &amp; amortization</td>
+                                <td class="text-end font-mono fw-bold">{{ count_loans }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-piggy-bank me-2 text-success"></i>Fixed Deposits</td>
+                                <td class="text-muted">Term deposits and accrued interest</td>
+                                <td class="text-end font-mono fw-bold">{{ count_fds }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-credit-card me-2 text-danger"></i>Virtual Debit Cards</td>
+                                <td class="text-muted">Issued debit cards and tokenized cards</td>
+                                <td class="text-end font-mono fw-bold">{{ count_cards }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-headset me-2 text-primary"></i>Support Tickets</td>
+                                <td class="text-muted">Customer inquiries and complaints</td>
+                                <td class="text-end font-mono fw-bold">{{ count_tickets }}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-semibold text-dark"><i class="bi bi-clock-history me-2 text-dark"></i>Audit Logs</td>
+                                <td class="text-muted">Staff operational activity &amp; security trail</td>
+                                <td class="text-end font-mono fw-bold">{{ count_activity_logs }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AVAILABLE BACKUP SNAPSHOTS -->
+    <div class="card p-4 border shadow-sm rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+            <div>
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-archive text-success me-2"></i>Verified Backup Snapshots Archive
+                </h5>
+                <span class="text-muted small">Generated via SQLite online backup API &bull; Stored locally in isolated directory</span>
+            </div>
+            <span class="badge bg-light text-dark border font-mono small">
+                {{ backup_files|length }} Snapshot{{ backup_files|length|pluralize }}
+            </span>
+        </div>
+
+        {% if backup_files %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light text-muted text-uppercase" style="font-size: 0.72rem;">
+                    <tr>
+                        <th>Snapshot Filename</th>
+                        <th>Created Timestamp</th>
+                        <th>Size</th>
+                        <th>SHA-256 Checksum</th>
+                        <th>Integrity</th>
+                        <th class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bk in backup_files %}
+                    <tr>
+                        <td class="font-mono fw-semibold text-dark">
+                            <i class="bi bi-file-earmark-binary text-secondary me-1"></i>{{ bk.filename }}
+                        </td>
+                        <td class="font-mono text-muted">{{ bk.created_at }}</td>
+                        <td class="font-mono">{{ bk.size_formatted }}</td>
+                        <td class="font-mono text-muted" title="{{ bk.sha256 }}">{{ bk.sha256|slice:":12" }}...</td>
+                        <td>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-mono">
+                                {{ bk.integrity }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'admin_backup_download' %}?filename={{ bk.filename }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                <i class="bi bi-download me-1"></i> Download
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted small">
+            <i class="bi bi-archive fs-3 d-block mb-1"></i>
+            No snapshots in local archive yet. Click "Create Backup Snapshot" above to generate a verified backup.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- SAFE DISASTER RECOVERY & RESTORE CONSOLE -->
+    <div class="card p-4 border border-warning-subtle shadow-sm rounded-4" style="background: #fffdfa;">
+        <h5 class="fw-bold text-dark mb-2">
+            <i class="bi bi-shield-shaded text-warning me-2"></i>Safe Disaster Recovery &amp; Restore Console
+        </h5>
+        <p class="text-muted small mb-3">
+            To prevent race conditions, data loss, or server corruption, web-based arbitrary database overwriting is strictly prohibited. Database recovery is performed through the safe, authenticated CLI utility.
+        </p>
+
+        <div class="p-3 bg-white rounded-3 border mb-3">
+            <span class="fw-bold text-dark d-block mb-2 small">Standard Recovery Procedure:</span>
+            <ol class="small text-muted mb-0 ps-3">
+                <li class="mb-2">
+                    <strong>Stop the Application Server:</strong> Terminate any active web processes (e.g. <code>Ctrl+C</code> in the running Django development terminal).
+                </li>
+                <li class="mb-2">
+                    <strong>Execute the Restore Utility:</strong> Run the safe management command specifying the snapshot path:
+                    <pre class="bg-light p-2 rounded border font-mono text-dark mt-1 mb-1">python manage.py restore_sqlite_backup "backups/bebank_backup_example.sqlite3" --confirm</pre>
+                </li>
+                <li class="mb-2">
+                    <strong>Automated Safety Safeguards:</strong>
+                    The command automatically checks SQLite integrity (<code>PRAGMA integrity_check</code>) of the source file, creates a pre-restore safety snapshot of the existing database, performs transactional restore, and validates the restored target.
+                </li>
+                <li class="mb-0">
+                    <strong>Restart the Application:</strong> Launch <code>python manage.py runserver</code> once the restore command reports success.
+                </li>
+            </ol>
+        </div>
+
+        <div class="alert alert-warning border-0 rounded-3 mb-0 small text-dark">
+            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+            <strong>Compliance Note:</strong> All backup downloads and CLI recovery actions are immutably logged into <code>EmployeeActivityLog</code>. Never attempt restoring backups from untrusted external sources.
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -5,210 +5,739 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<title>{% block title %}BEBANK Staff Portal{% endblock %}</title>
 
-<title>Employee Dashboard</title>
+<!-- Favicon and Brand Icons -->
+<link rel="icon" type="image/svg+xml" href="{% static 'images/bebank_b_monogram.svg' %}">
+<link rel="icon" type="image/png" sizes="48x48" href="{% static 'images/favicon-48x48.png' %}">
+<link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon-32x32.png' %}">
+<link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/favicon-16x16.png' %}">
+<link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/apple-touch-icon.png' %}">
+
+<!-- Fonts & Frameworks -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
 <style>
-
-/* ===== BODY (LIGHT UI) ===== */
-body{
-    margin:0;
-    font-family: 'Segoe UI', sans-serif;
-    background:#f5f7fb;   /* 🔥 LIGHT BG */
-    color:#333;
+:root {
+    --bebank-navy-primary: #0a192f;
+    --bebank-navy-deep: #071120;
+    --bebank-navy-surface: #112240;
+    --bebank-navy-hover: #1b2e4b;
+    --bebank-accent-cyan: #64ffda;
+    --bebank-text-main: #0f172a;
+    --bebank-text-muted: #64748b;
+    --bebank-bg-main: #f8fafc;
+    --bebank-card-border: #e2e8f0;
 }
 
-/* ===== CONTENT ===== */
-.main-content{
-    padding:20px;
-    padding-bottom:110px;
+body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bebank-bg-main);
+    color: var(--bebank-text-main);
+    padding-bottom: 30px;
+    min-height: 100vh;
 }
 
-/* ===== CARD DESIGN ===== */
-.card-container{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    gap:15px;
+/* TOP NAVBAR (DESKTOP / TABLET) */
+.staff-topbar {
+    background: var(--bebank-navy-primary);
+    color: #ffffff;
+    padding: 12px 24px;
+    box-shadow: 0 4px 18px rgba(10, 25, 47, 0.22);
+    position: sticky;
+    top: 0;
+    z-index: 1020;
 }
 
-.card{
-    background:white;
-    padding:20px;
-    border-radius:14px;
-    box-shadow:0 4px 15px rgba(0,0,0,0.08);
-    transition:0.3s;
+.brand-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #ffffff;
 }
 
-.card:hover{
-    transform:translateY(-3px);
+.brand-wrapper:hover {
+    color: #ffffff;
 }
 
-.card h3{
-    margin:0;
-    font-size:14px;
-    color:#777;
+.brand-logo-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
 }
 
-.card h1{
-    margin:10px 0 0;
-    font-size:22px;
-    color:#222;
+.brand-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    margin: 0;
 }
 
-/* ===== FORM STYLE ===== */
-input, select, textarea{
-    width:100%;
-    padding:12px;
-    margin:8px 0;
-    border-radius:10px;
-    border:1px solid #ddd;
-    font-size:14px;
-    background:white;
+.brand-badge {
+    font-size: 0.7rem;
+    background: rgba(100, 255, 218, 0.15);
+    color: var(--bebank-accent-cyan);
+    border: 1px solid rgba(100, 255, 218, 0.3);
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
 }
 
-button{
-    width:100%;
-    padding:12px;
-    border:none;
-    border-radius:10px;
-    background:#5f6cff;
-    color:white;
-    font-size:15px;
-    cursor:pointer;
+.staff-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
-button:hover{
-    background:#4a54e1;
+.staff-nav-link {
+    color: #cbd5e1;
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
 }
 
-/* ===== NAVBAR (UNCHANGED DARK STYLE) ===== */
-.bottom-nav{
-    position:fixed;
-    bottom:18px;
-    left:50%;
-    transform:translateX(-50%);
-
-    width:92%;
-    max-width:420px;
-
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-
-    background:rgba(20,20,30,0.85);
-    backdrop-filter: blur(18px);
-
-    border-radius:30px;
-    padding:10px 6px;
-
-    box-shadow:
-        0 10px 30px rgba(0,0,0,0.6),
-        inset 0 0 8px rgba(255,255,255,0.05);
+.staff-nav-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.nav-item{
-    flex:1;
-    text-align:center;
-    text-decoration:none;
-    color:#aaa;
-    font-size:11px;
-
-    padding:10px 0;
-    border-radius:20px;
-
-    transition:all 0.3s ease;
+.staff-nav-link.active {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
 
-.nav-item .material-icons{
-    display:block;
-    font-size:22px;
-    margin-bottom:3px;
+.user-pill {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    color: #f1f5f9;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
-/* ACTIVE */
-.nav-item.active{
-    background:linear-gradient(135deg,#7f5af0,#5f6cff);
-    color:white;
-
-    box-shadow:
-        0 0 12px rgba(127,90,240,0.7),
-        0 0 25px rgba(95,108,255,0.5);
-
-    transform:scale(1.05);
+.btn-nav-logout {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
 
-.nav-item:hover{
-    color:white;
+.btn-nav-logout:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
 }
 
+/* CONTENT CONTAINER */
+.main-content {
+    padding: 24px 20px 40px;
+}
+
+/* CARDS */
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--bebank-card-border);
+    box-shadow: 0 4px 16px rgba(10, 25, 47, 0.05);
+    transition: 0.25s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(10, 25, 47, 0.08);
+}
+
+.font-mono {
+    font-family: 'Consolas', 'SF Mono', 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* MOBILE HAMBURGER BUTTON & SIDE DRAWER */
+.btn-hamburger {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-hamburger:hover,
+.btn-hamburger:focus {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--bebank-accent-cyan);
+    color: var(--bebank-accent-cyan);
+    box-shadow: 0 0 0 3px rgba(100, 255, 218, 0.25);
+}
+
+.employee-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 320px;
+    max-width: 85vw;
+    height: 100vh;
+    background: var(--bebank-navy-primary);
+    color: #ffffff;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0.3s ease;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: -10px 0 36px rgba(7, 17, 32, 0.55);
+}
+
+.employee-drawer.show,
+.employee-drawer.is-open {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+}
+
+.drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(7, 17, 32, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1045;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.drawer-backdrop.show,
+.drawer-backdrop.is-open {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.employee-drawer .offcanvas-header {
+    background: var(--bebank-navy-deep);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px 20px;
+}
+
+.employee-drawer .offcanvas-body {
+    padding: 16px 16px 24px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.drawer-user-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.drawer-section-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    padding-left: 4px;
+}
+
+.drawer-nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.drawer-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    color: #cbd5e1;
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.drawer-nav-link i {
+    font-size: 1.15rem;
+    width: 22px;
+    text-align: center;
+    color: #94a3b8;
+    transition: color 0.2s ease;
+}
+
+.drawer-nav-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.drawer-nav-link:hover i {
+    color: var(--bebank-accent-cyan);
+}
+
+.drawer-nav-link.active {
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.drawer-nav-link.active i {
+    color: #ffffff;
+}
+
+.btn-drawer-logout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-drawer-logout i {
+    font-size: 1.15rem;
+    width: 22px;
+    text-align: center;
+}
+
+.btn-drawer-logout:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+@media (min-width: 992px) {
+    .btn-hamburger,
+    .employee-drawer,
+    .drawer-backdrop {
+        display: none !important;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .staff-nav-links {
+        display: none !important;
+    }
+}
 </style>
 </head>
 
 <body>
 
+<!-- ===== TOP NAVBAR ===== -->
+<header class="staff-topbar">
+    <div class="d-flex justify-content-between align-items-center w-100">
+
+        <!-- Brand & Title -->
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'employee_dashboard' %}" class="brand-wrapper">
+                <img src="{% static 'images/bebank_b_monogram.svg' %}" alt="BEBANK Monogram" class="brand-logo-img">
+                <span class="brand-title">BEBANK</span>
+                <span class="brand-badge">Staff Portal</span>
+            </a>
+        </div>
+
+        <!-- Navigation Entries (Desktop) -->
+        <nav class="staff-nav-links">
+            <a href="{% url 'employee_dashboard' %}"
+               class="staff-nav-link {% if request.resolver_match.url_name == 'employee_dashboard' %}active{% endif %}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+            <a href="{% url 'staff_customer_list' %}"
+               class="staff-nav-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-people"></i> Customers
+            </a>
+            <a href="{% url 'staff_operations' %}"
+               class="staff-nav-link {% if 'operation' in request.resolver_match.url_name or 'create_account' in request.resolver_match.url_name or 'deposit' in request.resolver_match.url_name or 'withdraw' in request.resolver_match.url_name or 'teller' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-wallet2"></i> Operations
+            </a>
+            <a href="{% url 'staff_loan_queue' %}"
+               class="staff-nav-link {% if 'loan' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-cash-coin"></i> Loans
+            </a>
+            <a href="{% url 'staff_fd_list' %}"
+               class="staff-nav-link {% if 'fd' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-piggy-bank"></i> Fixed Deposits
+            </a>
+            <a href="{% url 'staff_card_list' %}"
+               class="staff-nav-link {% if 'card' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-credit-card-2-front"></i> Cards
+            </a>
+            <a href="{% url 'staff_kyc_queue' %}"
+               class="staff-nav-link {% if 'kyc' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-shield-check"></i> KYC Review
+            </a>
+            <a href="{% url 'staff_support_queue' %}"
+               class="staff-nav-link {% if 'support' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-headset"></i> Support Queue
+            </a>
+            <a href="{% url 'analytics' %}"
+               class="staff-nav-link {% if 'analytics' in request.resolver_match.url_name or 'report' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-graph-up-arrow"></i> Reports
+            </a>
+            <a href="{% url 'staff_activity_log' %}"
+               class="staff-nav-link {% if 'activity' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-clock-history"></i> Audit Logs
+            </a>
+            <a href="{% url 'staff_profile' %}"
+               class="staff-nav-link {% if 'staff_profile' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="bi bi-person-badge"></i> My Profile
+            </a>
+        </nav>
+
+        <!-- Right User Pill, Logout & Mobile Hamburger -->
+        <div class="d-flex align-items-center gap-2">
+            <span class="user-pill d-none d-md-inline-flex">
+                <i class="bi bi-person-circle text-info"></i>
+                {{ request.user.role }} ({{ request.user.username }})
+            </span>
+            <a href="{% url 'logout' %}" class="btn-nav-logout d-none d-lg-inline-flex">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+            <button class="btn btn-hamburger d-lg-none"
+                    type="button"
+                    id="btnEmployeeHamburger"
+                    aria-controls="employeeMobileDrawer"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation menu"
+                    data-drawer-target="#employeeMobileDrawer">
+                <i class="bi bi-list" aria-hidden="true"></i>
+            </button>
+        </div>
+
+    </div>
+</header>
+
+<!-- Main Page Content Block -->
 <div class="main-content">
-
     {% block content %}
+    {% endblock %}
+</div>
 
-    <!-- SAMPLE DASHBOARD UI -->
-    <h2>👨‍💼 Employee Dashboard</h2>
+<!-- ===== EMPLOYEE MOBILE NAVIGATION DRAWER ===== -->
+<div class="offcanvas offcanvas-end employee-drawer"
+     tabindex="-1"
+     id="employeeMobileDrawer"
+     aria-labelledby="employeeMobileDrawerLabel"
+     aria-hidden="true"
+     role="dialog">
 
-    <div class="card-container">
-        <div class="card">
-            <h3>Total Accounts</h3>
-            <h1>{{ total_accounts }}</h1>
+    <!-- Drawer Header -->
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center gap-2">
+            <img src="{% static 'images/bebank_b_monogram.svg' %}" alt="BEBANK Monogram" class="brand-logo-img" style="width: 28px; height: 28px;">
+            <span class="brand-title text-white" id="employeeMobileDrawerLabel" style="font-size: 1.1rem; letter-spacing: 0.5px;">BEBANK</span>
+            <span class="brand-badge">Staff</span>
         </div>
-
-        <div class="card">
-            <h3>Total Balance</h3>
-            <h1>₹{{ total_balance }}</h1>
-        </div>
-
-        <div class="card">
-            <h3>Total Loans</h3>
-            <h1>{{ total_loans }}</h1>
-        </div>
+        <button type="button" class="btn-close btn-close-white" aria-label="Close navigation menu"></button>
     </div>
 
-    {% endblock %}
+    <!-- Drawer Body -->
+    <div class="offcanvas-body d-flex flex-column justify-content-between">
+        <div>
+            <!-- Staff User Info -->
+            <div class="drawer-user-card mb-3">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2 overflow-hidden">
+                        <i class="bi bi-person-circle fs-4" style="color: var(--bebank-accent-cyan);"></i>
+                        <div class="overflow-hidden">
+                            <div class="text-white fw-bold text-truncate" style="font-size: 0.9rem;">{{ request.user.username }}</div>
+                            <div class="text-muted text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.6px;">Role: {{ request.user.role }}</div>
+                        </div>
+                    </div>
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 small">Active</span>
+                </div>
+            </div>
 
+            <!-- Workspace Nav Header -->
+            <div class="drawer-section-title">Staff Workspace</div>
+
+            <!-- 12 Navigation Items in Requested Order -->
+            <nav class="drawer-nav-list" aria-label="Employee mobile navigation">
+                <!-- 1. Dashboard -->
+                <a href="{% url 'employee_dashboard' %}"
+                   class="drawer-nav-link {% if request.resolver_match.url_name == 'employee_dashboard' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- 2. Customers -->
+                <a href="{% url 'staff_customer_list' %}"
+                   class="drawer-nav-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-people"></i>
+                    <span>Customers</span>
+                </a>
+
+                <!-- 3. Account Operations -->
+                <a href="{% url 'staff_operations' %}"
+                   class="drawer-nav-link {% if 'operation' in request.resolver_match.url_name or 'create_account' in request.resolver_match.url_name or 'deposit' in request.resolver_match.url_name or 'withdraw' in request.resolver_match.url_name or 'teller' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Account Operations</span>
+                </a>
+
+                <!-- 4. KYC Review -->
+                <a href="{% url 'staff_kyc_queue' %}"
+                   class="drawer-nav-link {% if 'kyc' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-shield-check"></i>
+                    <span>KYC Review</span>
+                </a>
+
+                <!-- 5. Support Queue -->
+                <a href="{% url 'staff_support_queue' %}"
+                   class="drawer-nav-link {% if 'support' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-headset"></i>
+                    <span>Support Queue</span>
+                </a>
+
+                <!-- 6. Loans -->
+                <a href="{% url 'staff_loan_queue' %}"
+                   class="drawer-nav-link {% if 'loan' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-cash-coin"></i>
+                    <span>Loans</span>
+                </a>
+
+                <!-- 7. Fixed Deposits -->
+                <a href="{% url 'staff_fd_list' %}"
+                   class="drawer-nav-link {% if 'fd' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-piggy-bank"></i>
+                    <span>Fixed Deposits</span>
+                </a>
+
+                <!-- 8. Debit Cards -->
+                <a href="{% url 'staff_card_list' %}"
+                   class="drawer-nav-link {% if 'card' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-credit-card-2-front"></i>
+                    <span>Debit Cards</span>
+                </a>
+
+                <!-- 9. Reports -->
+                <a href="{% url 'staff_reports' %}"
+                   class="drawer-nav-link {% if 'analytics' in request.resolver_match.url_name or 'report' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Reports</span>
+                </a>
+
+                <!-- 10. Activity Logs -->
+                <a href="{% url 'staff_activity_log' %}"
+                   class="drawer-nav-link {% if 'activity' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Activity Logs</span>
+                </a>
+
+                <!-- 11. My Profile -->
+                <a href="{% url 'staff_profile' %}"
+                   class="drawer-nav-link {% if 'staff_profile' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>My Profile</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- 12. Logout -->
+        <div class="pt-3 border-top border-secondary border-opacity-25 mt-3">
+            <a href="{% url 'logout' %}" class="btn-drawer-logout">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
 </div>
 
-<!-- ===== NAVBAR ===== -->
-<div class="bottom-nav">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <a href="{% url 'employee_dashboard' %}"
-       class="nav-item {% if 'dashboard' in request.path %}active{% endif %}">
-        <span class="material-icons">home</span>
-        Home
-    </a>
+<!-- ===== RELIABLE NATIVE EMPLOYEE DRAWER JAVASCRIPT ===== -->
+<script>
+(function () {
+    'use strict';
 
-    <a href="{% url 'create_account' %}"
-       class="nav-item {% if 'create-account' in request.path %}active{% endif %}">
-        <span class="material-icons">person_add</span>
-        Create
-    </a>
+    function initEmployeeDrawer() {
+        const hamburgerBtn = document.getElementById('btnEmployeeHamburger') || document.querySelector('.btn-hamburger');
+        const drawer = document.getElementById('employeeMobileDrawer');
+        if (!hamburgerBtn || !drawer) return;
 
-    <a href="{% url 'deposit' %}"
-       class="nav-item {% if 'deposit' in request.path %}active{% endif %}">
-        <span class="material-icons">account_balance_wallet</span>
-        Deposit
-    </a>
+        // Ensure backdrop element exists once in the DOM
+        let backdrop = document.getElementById('employeeDrawerBackdrop');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.id = 'employeeDrawerBackdrop';
+            backdrop.className = 'drawer-backdrop';
+            backdrop.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(backdrop);
+        }
 
-    <a href="{% url 'analytics' %}"
-       class="nav-item {% if 'analytics' in request.path %}active{% endif %}">
-        <span class="material-icons">bar_chart</span>
-        Analytics
-    </a>
+        const closeBtn = drawer.querySelector('.btn-close');
+        const navLinks = drawer.querySelectorAll('.drawer-nav-link, .btn-drawer-logout');
 
-    <!-- safer logout -->
-    <a href="/logout/" class="nav-item">
-        <span class="material-icons">logout</span>
-        Logout
-    </a>
+        let isOpen = false;
 
-</div>
+        function openDrawer() {
+            if (isOpen) return;
+            isOpen = true;
+
+            drawer.classList.add('show', 'is-open');
+            drawer.setAttribute('aria-modal', 'true');
+            drawer.setAttribute('role', 'dialog');
+            drawer.removeAttribute('aria-hidden');
+
+            backdrop.classList.add('show', 'is-open');
+
+            hamburgerBtn.setAttribute('aria-expanded', 'true');
+
+            // Prevent background scrolling while drawer is open
+            document.body.style.overflow = 'hidden';
+
+            // Keyboard focus accessibility
+            if (closeBtn) {
+                closeBtn.focus();
+            }
+        }
+
+        function closeDrawer() {
+            if (!isOpen) return;
+            isOpen = false;
+
+            drawer.classList.remove('show', 'is-open');
+            drawer.setAttribute('aria-hidden', 'true');
+            drawer.removeAttribute('aria-modal');
+
+            backdrop.classList.remove('show', 'is-open');
+
+            hamburgerBtn.setAttribute('aria-expanded', 'false');
+
+            // Restore background scrolling
+            document.body.style.overflow = '';
+
+            // Return focus to hamburger button
+            if (hamburgerBtn) {
+                hamburgerBtn.focus();
+            }
+        }
+
+        // Toggle on hamburger button click / tap
+        hamburgerBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isOpen) {
+                closeDrawer();
+            } else {
+                openDrawer();
+            }
+        });
+
+        // Close on close button (×) click
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeDrawer();
+            });
+        }
+
+        // Close on backdrop click / tap
+        backdrop.addEventListener('click', function (e) {
+            e.preventDefault();
+            closeDrawer();
+        });
+
+        // Close on navigation link click
+        navLinks.forEach(function (link) {
+            link.addEventListener('click', function () {
+                closeDrawer();
+            });
+        });
+
+        // Close on Escape key press
+        document.addEventListener('keydown', function (e) {
+            if ((e.key === 'Escape' || e.keyCode === 27) && isOpen) {
+                closeDrawer();
+            }
+        });
+
+        // Close when resized across desktop breakpoint
+        window.addEventListener('resize', function () {
+            if (window.innerWidth >= 992 && isOpen) {
+                closeDrawer();
+            }
+        });
+
+        // Expose safe control API for automated testing
+        window.__employeeDrawer = {
+            open: openDrawer,
+            close: closeDrawer,
+            isOpen: function () { return isOpen; }
+        };
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEmployeeDrawer);
+    } else {
+        initEmployeeDrawer();
+    }
+})();
+</script>
 
 </body>
 </html>

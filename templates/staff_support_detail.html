@@ -1,0 +1,304 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}Staff Console: {{ ticket.ticket_number }} — BEBANK{% endblock %}
+
+{% block content %}
+<style>
+.msg-bubble {
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.msg-customer {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+}
+.msg-staff {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+}
+.msg-internal {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.08);
+}
+</style>
+
+<div class="container-fluid px-2 px-md-4" style="max-width: 1200px;">
+
+    <!-- Top Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'staff_support_queue' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-2">
+                <i class="bi bi-arrow-left"></i> Support Queue
+            </a>
+            <h4 class="d-inline-block align-middle mb-0 fw-bold text-dark">
+                Ticket <span class="font-mono text-primary">{{ ticket.ticket_number }}</span>
+            </h4>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            {% if ticket.status == 'OPEN' %}
+            <span class="badge bg-primary px-3 py-2 rounded-pill">Open</span>
+            {% elif ticket.status == 'IN_PROGRESS' %}
+            <span class="badge bg-info text-dark px-3 py-2 rounded-pill">In Progress</span>
+            {% elif ticket.status == 'WAITING_FOR_CUSTOMER' %}
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Waiting Customer</span>
+            {% elif ticket.status == 'RESOLVED' %}
+            <span class="badge bg-success px-3 py-2 rounded-pill">Resolved</span>
+            {% else %}
+            <span class="badge bg-secondary px-3 py-2 rounded-pill">Closed</span>
+            {% endif %}
+
+            {% if ticket.priority == 'URGENT' %}
+            <span class="badge bg-danger px-3 py-2 rounded-pill">Urgent</span>
+            {% elif ticket.priority == 'HIGH' %}
+            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">High</span>
+            {% elif ticket.priority == 'MEDIUM' %}
+            <span class="badge bg-primary-subtle text-primary border px-3 py-2 rounded-pill">Medium</span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 rounded-pill">Low</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Feedback messages -->
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Main Column: Conversation -->
+        <div class="col-lg-8">
+            <!-- Ticket Header Info -->
+            <div class="card p-4 mb-4 bg-white">
+                <h5 class="fw-bold text-dark mb-2">{{ ticket.subject }}</h5>
+                <div class="d-flex flex-wrap gap-2 text-muted small align-items-center">
+                    <span class="badge bg-light text-dark border">{{ ticket.get_category_display }}</span>
+                    <span>&bull;</span>
+                    <span>Created: {{ ticket.created_at|date:"d M Y, H:i" }}</span>
+                    <span>&bull;</span>
+                    <span>Last Active: {{ ticket.updated_at|date:"d M Y, H:i" }}</span>
+                </div>
+            </div>
+
+            <!-- Messages Thread -->
+            <div class="card p-4 mb-4 bg-white">
+                <h6 class="fw-bold mb-4 pb-2 border-bottom text-muted">
+                    <i class="bi bi-chat-left-dots me-1"></i> Ticket Communications History
+                </h6>
+
+                <div class="d-flex flex-column">
+                    {% for msg in messages_list %}
+                    <div class="msg-bubble {% if msg.is_internal_note %}msg-internal{% elif msg.author.role == 'CUSTOMER' %}msg-customer{% else %}msg-staff{% endif %}">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom" style="font-size: 12px;">
+                            <div>
+                                {% if msg.is_internal_note %}
+                                <span class="badge bg-warning text-dark me-2">
+                                    <i class="bi bi-eye-slash-fill me-1"></i>INTERNAL NOTE (NOT VISIBLE TO CUSTOMER)
+                                </span>
+                                <strong>{{ msg.author.username }} ({{ msg.author.role }})</strong>
+                                {% elif msg.author.role == 'CUSTOMER' %}
+                                <strong class="text-dark"><i class="bi bi-person me-1"></i>Customer: {{ msg.author.username }}</strong>
+                                {% else %}
+                                <strong class="text-primary"><i class="bi bi-shield-check me-1"></i>Staff: {{ msg.author.username }} ({{ msg.author.role }})</strong>
+                                {% endif %}
+                            </div>
+                            <span class="text-muted">{{ msg.created_at|date:"d M, H:i" }}</span>
+                        </div>
+                        <div class="text-dark small" style="white-space: pre-wrap; line-height: 1.6;">{{ msg.message }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Staff Response & Action Form -->
+            <div class="card p-4 bg-white">
+                <h6 class="fw-bold mb-3 text-dark">Staff Response &amp; Status Controls</h6>
+                <form method="POST" action="{% url 'staff_support_reply' ticket.id %}">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">Message / Note Content</label>
+                        <textarea name="message" class="form-control" rows="4" placeholder="Write a response to the customer, or leave an internal team note..."></textarea>
+                    </div>
+
+                    <!-- Internal Note Toggle -->
+                    <div class="form-check form-switch p-3 bg-light rounded-3 mb-3 border">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" name="is_internal_note" id="internalNoteSwitch" value="true">
+                        <label class="form-check-label fw-semibold text-dark" for="internalNoteSwitch">
+                            <i class="bi bi-shield-lock text-warning me-1"></i> Internal Staff Note Only
+                        </label>
+                        <div class="text-muted small ms-4">
+                            If checked, this note will be saved internally and will <strong>never</strong> be visible to the customer.
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Update Status</label>
+                            <select name="status" class="form-select form-select-sm">
+                                {% for code, label in status_choices %}
+                                <option value="{{ code }}" {% if ticket.status == code %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Update Priority</label>
+                            <select name="priority" class="form-select form-select-sm">
+                                {% for code, label in priority_choices %}
+                                <option value="{{ code }}" {% if ticket.priority == code %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary-navy rounded-pill px-4">
+                            <i class="bi bi-check2-circle me-1"></i> Update Ticket &amp; Send
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar Column: Metadata & Admin Assignment -->
+        <div class="col-lg-4">
+            <!-- Customer Card -->
+            <div class="card p-3 mb-4 bg-white">
+                <h6 class="fw-bold mb-3 text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Customer Profile</h6>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="rounded-circle bg-primary-subtle text-primary p-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-dark">{{ ticket.customer.get_full_name|default:ticket.customer.username }}</div>
+                        <div class="text-muted small">@{{ ticket.customer.username }}</div>
+                    </div>
+                </div>
+                <div class="border-top pt-2 small">
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Email:</span>
+                        <span class="text-dark fw-semibold">{{ ticket.customer.email|default:"Not provided" }}</span>
+                    </div>
+                    {% if ticket.customer.phone %}
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Phone:</span>
+                        <span class="text-dark font-mono fw-semibold">{{ ticket.customer.phone }}</span>
+                    </div>
+                    {% endif %}
+                    {% if primary_account %}
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Primary A/C:</span>
+                        <span class="text-dark font-mono fw-semibold">{{ primary_account.account_number }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Total Balance:</span>
+                        <span class="text-dark font-mono fw-bold text-success">₹{{ total_customer_balance|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">KYC Verified:</span>
+                        <span>
+                            {% if ticket.customer.kyc_verified %}
+                            <span class="badge bg-success">Verified</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Unverified</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assignment Card -->
+            <div class="card p-3 mb-4 bg-white">
+                <h6 class="fw-bold mb-3 text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Assignment Details</h6>
+                <div class="mb-3">
+                    <label class="text-muted small d-block mb-1">Currently Assigned To:</label>
+                    {% if ticket.assigned_to %}
+                    <span class="badge bg-light text-dark border p-2 w-100 text-start">
+                        <i class="bi bi-person-badge text-primary me-2"></i>{{ ticket.assigned_to.username }} ({{ ticket.assigned_to.role }})
+                    </span>
+                    {% else %}
+                    <span class="badge bg-warning-subtle text-warning border p-2 w-100 text-start">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Unassigned
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if is_admin %}
+                <div class="border-top pt-3">
+                    <label class="form-label small fw-semibold text-dark">Admin Assignment Control</label>
+                    <form method="POST" action="{% url 'staff_support_assign' ticket.id %}">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            <select name="assigned_to" class="form-select form-select-sm">
+                                <option value="">-- Unassigned --</option>
+                                {% for staff in staff_members %}
+                                <option value="{{ staff.id }}" {% if ticket.assigned_to_id == staff.id %}selected{% endif %}>
+                                    {{ staff.username }} ({{ staff.role }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-outline-dark btn-sm rounded-pill w-100">
+                            Update Assignment
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <!-- Employee Self-Service Assignment Controls -->
+                <div class="border-top pt-3">
+                    {% if not ticket.assigned_to %}
+                    <form method="POST" action="{% url 'staff_support_assign' ticket.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="claim">
+                        <button type="submit" class="btn btn-primary btn-sm rounded-pill w-100 fw-semibold" style="background: var(--bebank-navy-primary); border-color: var(--bebank-navy-primary);">
+                            <i class="bi bi-person-check me-1"></i> Assign to Me
+                        </button>
+                    </form>
+                    {% elif ticket.assigned_to == request.user %}
+                    <form method="POST" action="{% url 'staff_support_assign' ticket.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="release">
+                        <button type="submit" class="btn btn-outline-warning btn-sm rounded-pill w-100 fw-semibold">
+                            <i class="bi bi-person-dash me-1"></i> Release Ticket Back to Queue
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="small text-muted text-center p-2 bg-light rounded-3">
+                        <i class="bi bi-lock me-1"></i> Assigned to another staff member.
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Resolution Timestamps -->
+            <div class="card p-3 bg-white">
+                <h6 class="fw-bold mb-2 text-muted text-uppercase" style="font-size: 11px; letter-spacing: 0.5px;">Audit Trail</h6>
+                <ul class="list-unstyled mb-0 small text-muted">
+                    <li class="py-1"><strong>Created:</strong> {{ ticket.created_at|date:"d M Y, H:i" }}</li>
+                    <li class="py-1"><strong>Updated:</strong> {{ ticket.updated_at|date:"d M Y, H:i" }}</li>
+                    {% if ticket.resolved_at %}
+                    <li class="py-1 text-success"><strong>Resolved:</strong> {{ ticket.resolved_at|date:"d M Y, H:i" }}</li>
+                    {% endif %}
+                    {% if ticket.closed_at %}
+                    <li class="py-1 text-secondary"><strong>Closed:</strong> {{ ticket.closed_at|date:"d M Y, H:i" }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% include "includes/submit_guard.html" %}
+{% endblock %}
+

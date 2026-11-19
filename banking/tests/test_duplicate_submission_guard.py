@@ -6,6 +6,7 @@ import subprocess
 import threading
 import time
 import urllib.parse
+import uuid
 from decimal import Decimal
 from django.conf import settings
 from django.test import TestCase, Client
@@ -385,7 +386,8 @@ class DuplicateSubmissionBackendIntegrityTests(TestCase):
         self.client.force_login(self.customer)
         response = self.client.post('/bank/transfer/', {
             'account_number': self.other_account.account_number,
-            'amount': '300'
+            'amount': '300',
+            'idempotency_key': str(uuid.uuid4())
         })
         self.assertEqual(response.status_code, 302)
         self.account.refresh_from_db()

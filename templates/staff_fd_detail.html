@@ -1,0 +1,252 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}Fixed Deposit Inspection #{{ fd.id }} — BEBANK Staff Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3" style="max-width: 980px; margin: 0 auto;">
+
+    <!-- Back & Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <a href="{% url 'staff_fd_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-2">
+                <i class="bi bi-arrow-left me-1"></i> Fixed Deposit List
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <h3 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-piggy-bank text-primary me-2"></i>Fixed Deposit #{{ fd.id }}
+                </h3>
+                {% if fd.status == 'ACTIVE' %}
+                    {% if fd.is_matured_eligible %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1">
+                        <i class="bi bi-clock me-1"></i>Matured (Awaiting Settlement)
+                    </span>
+                    {% else %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">Active</span>
+                    {% endif %}
+                {% elif fd.status == 'MATURED' %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">Settled at Maturity</span>
+                {% elif fd.status == 'CLOSED' %}
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">Closed Prematurely</span>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill small">
+                Opened on {{ fd.start_date|date:"d M Y, H:i" }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Read-Only Oversight Notice -->
+    <div class="card border-0 bg-light p-3 rounded-4 mb-4 shadow-sm border-start border-4 border-info">
+        <div class="d-flex gap-2">
+            <i class="bi bi-shield-lock-fill text-info fs-5"></i>
+            <div class="small text-muted">
+                <strong>Read-Only Monitoring Workspace:</strong>
+                Staff officers may inspect terms, maturity schedules, and ledger audit entries. Financial terms, contracted interest rates, and settlement states cannot be altered manually. Payouts must be processed exclusively via system maturity schedules or authorized customer instructions.
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Terms Overview Card -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-calculator text-primary me-2"></i>Term Deposit Contract Parameters
+        </h5>
+        <div class="row g-3">
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 bg-light rounded-3">
+                    <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Principal Amount</span>
+                    <span class="h4 fw-bold font-mono text-dark mb-0">₹{{ fd.amount|floatformat:2 }}</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 bg-light rounded-3">
+                    <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Contracted Rate</span>
+                    <span class="h4 fw-bold font-mono text-primary mb-0">{{ fd.interest_rate }}%</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 bg-light rounded-3">
+                    <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Tenure</span>
+                    <span class="h4 fw-bold font-mono text-dark mb-0">{{ fd.duration_months }} Months</span>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="p-3 bg-light rounded-3">
+                    <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Expected Maturity</span>
+                    <span class="h4 fw-bold font-mono text-success mb-0">₹{{ fd.maturity_amount|floatformat:2 }}</span>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="p-3 bg-light rounded-3">
+                    <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Deposit Start Date</span>
+                    <span class="fw-semibold text-dark">{{ fd.start_date|date:"d M Y, H:i" }}</span>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="p-3 bg-light rounded-3">
+                    <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Maturity Date</span>
+                    <span class="fw-semibold {% if fd.is_matured_eligible %}text-warning fw-bold{% else %}text-dark{% endif %}">
+                        {{ fd.maturity_date|date:"d M Y, H:i" }}
+                        {% if fd.is_matured_eligible %}(Matured){% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settlement Record (if settled or closed) -->
+    {% if fd.status in 'MATURED CLOSED' %}
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4 border-start border-4 border-success">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-check-circle text-success me-2"></i>Settlement &amp; Liquidation Record
+        </h5>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <span class="small text-muted d-block">Closure Type</span>
+                <span class="fw-bold text-dark">{{ fd.get_closure_type_display|default:fd.closure_type }}</span>
+            </div>
+            <div class="col-sm-4">
+                <span class="small text-muted d-block">Settlement Date</span>
+                <span class="text-dark">{{ fd.settled_at|date:"d M Y, H:i"|default:"—" }}</span>
+            </div>
+            <div class="col-sm-4">
+                <span class="small text-muted d-block">Final Credited Amount</span>
+                <span class="font-mono fw-bold text-success">
+                    {% if fd.settlement_amount %}₹{{ fd.settlement_amount|floatformat:2 }}{% else %}—{% endif %}
+                </span>
+            </div>
+            {% if fd.closure_reason %}
+            <div class="col-12">
+                <span class="small text-muted d-block">Settlement Notes / Reason</span>
+                <div class="p-2 bg-light rounded text-dark small">{{ fd.closure_reason }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Customer & Account Profile Card -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-dark mb-0">
+                <i class="bi bi-person text-primary me-2"></i>Account &amp; Beneficial Owner
+            </h5>
+            <a href="{% url 'staff_customer_detail' customer.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3" target="_blank">
+                Customer Profile &rarr;
+            </a>
+        </div>
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <span class="small text-muted d-block">Account Holder</span>
+                <span class="fw-bold text-dark">{{ customer.get_full_name|default:customer.username }}</span>
+                <span class="text-muted small font-mono">({{ customer.username }})</span>
+            </div>
+            <div class="col-sm-6">
+                <span class="small text-muted d-block">KYC Verification Status</span>
+                {% if customer.kyc_status == 'APPROVED' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                    <i class="bi bi-check-circle me-1"></i>Verified
+                </span>
+                {% else %}
+                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 py-1">{{ customer.kyc_status }}</span>
+                {% endif %}
+            </div>
+            <div class="col-sm-6">
+                <span class="small text-muted d-block">Linked Bank Account</span>
+                <span class="font-mono fw-bold text-dark">{{ account.account_number }}</span>
+                <span class="badge bg-secondary-subtle text-dark ms-1">{{ account.account_type }}</span>
+            </div>
+            <div class="col-sm-6">
+                <span class="small text-muted d-block">Current Account Balance</span>
+                <span class="font-mono fw-bold text-success">₹{{ account.balance|floatformat:2 }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ledger Audit Trail References -->
+    <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-journal-check text-primary me-2"></i>Ledger Transaction Verification
+        </h5>
+        <div class="row g-3">
+            <!-- Opening Debit -->
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted text-uppercase fw-semibold">Opening Debit</span>
+                        <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-1 small">FD_DEBIT</span>
+                    </div>
+                    {% if opening_tx %}
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Transaction ID:</span>
+                            <span class="font-mono fw-bold text-dark">#{{ opening_tx.id }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Reference:</span>
+                            <span class="font-mono text-dark">{{ opening_tx.reference_id|default:"-" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Amount Debited:</span>
+                            <span class="font-mono fw-bold text-danger">-₹{{ opening_tx.amount|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Timestamp:</span>
+                            <span class="text-dark">{{ opening_tx.created_at|date:"d M Y, H:i" }}</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-muted small">No opening ledger record found.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Settlement Credit -->
+            <div class="col-md-6">
+                <div class="p-3 bg-light rounded-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small text-muted text-uppercase fw-semibold">Settlement Credit</span>
+                        {% if settlement_tx %}
+                        <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small">{{ settlement_tx.transaction_type }}</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1 small">Pending</span>
+                        {% endif %}
+                    </div>
+                    {% if settlement_tx %}
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Transaction ID:</span>
+                            <span class="font-mono fw-bold text-dark">#{{ settlement_tx.id }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Reference:</span>
+                            <span class="font-mono text-dark">{{ settlement_tx.reference_id|default:"-" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Amount Credited:</span>
+                            <span class="font-mono fw-bold text-success">+₹{{ settlement_tx.amount|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Timestamp:</span>
+                            <span class="text-dark">{{ settlement_tx.created_at|date:"d M Y, H:i" }}</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-muted small">
+                        {% if fd.status == 'ACTIVE' %}
+                        Deposit is active. Settlement ledger credit will occur upon maturity or closure.
+                        {% else %}
+                        No settlement credit transaction found.
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

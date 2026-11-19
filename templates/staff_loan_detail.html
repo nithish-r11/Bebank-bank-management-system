@@ -1,0 +1,475 @@
+{% extends 'base_employee.html' %}
+
+{% block title %}Loan Verification #{{ loan.id }} — BEBANK Staff Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-3" style="max-width: 1200px; margin: 0 auto;">
+
+    <!-- Back & Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <a href="{% url 'staff_loan_queue' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 mb-2">
+                <i class="bi bi-arrow-left me-1"></i> Loan Queue
+            </a>
+            <div class="d-flex align-items-center gap-3">
+                <h3 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-cash-coin text-primary me-2"></i>Loan Application #{{ loan.id }}
+                </h3>
+                {% if loan.status == 'PENDING' %}
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3 py-1">Pending Underwriting</span>
+                {% elif loan.status == 'UNDER_REVIEW' %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3 py-1">Under Review</span>
+                {% elif loan.status == 'APPROVED' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">Approved &amp; Disbursed</span>
+                {% elif loan.status == 'REJECTED' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1">Rejected</span>
+                {% elif loan.status == 'CLOSED' %}
+                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1">Closed</span>
+                {% endif %}
+
+                {% if loan.recommendation == 'RECOMMEND_APPROVE' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
+                    <i class="bi bi-hand-thumbs-up me-1"></i>Recommended for Approval
+                </span>
+                {% elif loan.recommendation == 'RECOMMEND_REJECT' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1">
+                    <i class="bi bi-hand-thumbs-down me-1"></i>Recommended for Rejection
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill small">
+                Applied on {{ loan.created_at|date:"d M Y, H:i" }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+
+        <!-- Left Column: Loan Terms & Customer 360 -->
+        <div class="col-lg-7">
+
+            <!-- Requested Financial Terms -->
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-calculator text-primary me-2"></i>Requested Loan Parameters
+                </h5>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Principal Amount</span>
+                            <span class="h4 fw-bold font-mono text-dark mb-0">₹{{ loan.amount|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Simulation Rate (% p.a.)</span>
+                            <span class="h4 fw-bold font-mono text-primary mb-0">{{ loan.interest_rate }}%</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Requested Tenure</span>
+                            <span class="h4 fw-bold font-mono text-dark mb-0">{{ loan.duration_months }} Months</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Estimated Monthly EMI</span>
+                            <span class="h4 fw-bold font-mono text-success mb-0">
+                                {% if loan.emi_amount %}₹{{ loan.emi_amount|floatformat:2 }}{% else %}—{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% if loan.total_payable %}
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Total Payable</span>
+                            <span class="h5 fw-bold font-mono text-dark mb-0">₹{{ loan.total_payable|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <span class="small text-muted text-uppercase fw-semibold d-block mb-1">Total Interest</span>
+                            <span class="h5 fw-bold font-mono text-muted mb-0">₹{{ loan.total_interest|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Customer & Account Summary -->
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-person-badge text-primary me-2"></i>Applicant &amp; Account Profile
+                    </h5>
+                    <a href="{% url 'staff_customer_detail' customer.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-3" target="_blank">
+                        View 360° Profile &rarr;
+                    </a>
+                </div>
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <span class="small text-muted d-block">Full Legal Name</span>
+                        <span class="fw-bold text-dark">{{ customer.get_full_name|default:customer.username }}</span>
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="small text-muted d-block">Customer Username</span>
+                        <span class="font-mono text-dark">{{ customer.username }}</span>
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="small text-muted d-block">Identity Verification (KYC)</span>
+                        {% if customer.kyc_status == 'APPROVED' %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                            <i class="bi bi-check-circle me-1"></i>Verified &amp; Approved
+                        </span>
+                        {% elif customer.kyc_status == 'PENDING' %}
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-2 py-1">
+                            <i class="bi bi-clock me-1"></i>Pending Verification
+                        </span>
+                        {% elif customer.kyc_status == 'UNDER_REVIEW' %}
+                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1">
+                            <i class="bi bi-eye me-1"></i>KYC Under Review
+                        </span>
+                        {% else %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                            {{ customer.kyc_status }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="small text-muted d-block">Profile Status</span>
+                        {% if customer.account_locked %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">
+                            <i class="bi bi-lock me-1"></i>Locked
+                        </span>
+                        {% elif not customer.is_active %}
+                        <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1">Inactive</span>
+                        {% else %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">Active</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="small text-muted d-block">Linked Disbursement Account</span>
+                        <span class="font-mono fw-bold text-dark">{{ account.account_number }}</span>
+                        <span class="badge bg-secondary-subtle text-dark ms-1">{{ account.account_type }}</span>
+                    </div>
+                    <div class="col-sm-6">
+                        <span class="small text-muted d-block">Available Account Balance</span>
+                        <span class="font-mono fw-bold text-success">₹{{ account.balance|floatformat:2 }}</span>
+                    </div>
+                    <div class="col-12">
+                        <span class="small text-muted d-block">Contact Details</span>
+                        <span class="small text-dark">{{ customer.email|default:"No email" }} &bull; {{ customer.phone|default:"No phone" }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Existing Loan History -->
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-clock-history text-primary me-2"></i>Customer Loan History
+                </h5>
+                {% if customer_loans %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr class="small text-muted">
+                                <th>Loan ID</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Tenure</th>
+                                <th>Status</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for prev in customer_loans %}
+                            <tr>
+                                <td class="font-mono fw-bold">#{{ prev.id }}</td>
+                                <td class="small text-muted">{{ prev.created_at|date:"d M Y" }}</td>
+                                <td class="font-mono small">₹{{ prev.amount|floatformat:2 }}</td>
+                                <td class="small">{{ prev.duration_months }}m</td>
+                                <td>
+                                    <span class="badge {% if prev.status == 'APPROVED' %}bg-success-subtle text-success{% elif prev.status == 'CLOSED' %}bg-secondary-subtle text-secondary{% elif prev.status == 'REJECTED' %}bg-danger-subtle text-danger{% else %}bg-warning-subtle text-warning{% endif %} rounded-pill px-2 py-1 small">
+                                        {{ prev.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'staff_loan_detail' prev.id %}" class="btn btn-sm btn-link text-decoration-none">View</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-muted small py-2">
+                    <i class="bi bi-info-circle me-1"></i>No other loan applications on record for this customer.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Installment Amortization Schedule (if Approved) -->
+            {% if installments %}
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-calendar-check text-success me-2"></i>Disbursed Amortization Schedule
+                </h5>
+                <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr class="small text-muted">
+                                <th>#</th>
+                                <th>Due Date</th>
+                                <th class="text-end">Principal</th>
+                                <th class="text-end">Interest</th>
+                                <th class="text-end">Total EMI</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inst in installments %}
+                            <tr>
+                                <td class="font-mono small fw-bold">{{ inst.installment_number }}</td>
+                                <td class="small text-muted">{{ inst.due_date|date:"d M Y" }}</td>
+                                <td class="text-end font-mono small">₹{{ inst.principal_component|floatformat:2 }}</td>
+                                <td class="text-end font-mono small">₹{{ inst.interest_component|floatformat:2 }}</td>
+                                <td class="text-end font-mono small fw-bold">₹{{ inst.total_amount|floatformat:2 }}</td>
+                                <td class="text-center">
+                                    {% if inst.status == 'PAID' %}
+                                    <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1 small">Paid</span>
+                                    {% elif inst.status == 'PARTIALLY_PAID' %}
+                                    <span class="badge bg-info-subtle text-info rounded-pill px-2 py-1 small">Partial</span>
+                                    {% elif inst.status == 'OVERDUE' %}
+                                    <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-1 small">Overdue</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1 small">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- Right Column: Verification Workspace & Decision Desk -->
+        <div class="col-lg-5">
+
+            <!-- Employee Verification Workspace Card -->
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4 border-top border-4 border-primary">
+                <h5 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-clipboard-check text-primary me-2"></i>Underwriting Verification
+                </h5>
+
+                <!-- Current Review Status Summary -->
+                <div class="p-3 bg-light rounded-3 mb-3 small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Reviewing Officer:</span>
+                        <span class="fw-semibold text-dark">{{ loan.reviewed_by.username|default:"Unassigned" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Reviewed On:</span>
+                        <span class="text-dark">{{ loan.reviewed_at|date:"d M Y, H:i"|default:"Not yet reviewed" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Recommendation:</span>
+                        <span class="fw-bold {% if loan.recommendation == 'RECOMMEND_APPROVE' %}text-success{% elif loan.recommendation == 'RECOMMEND_REJECT' %}text-danger{% else %}text-muted{% endif %}">
+                            {{ loan.get_recommendation_display }}
+                        </span>
+                    </div>
+                    {% if loan.verification_notes %}
+                    <div class="mt-2 pt-2 border-top">
+                        <span class="text-muted d-block mb-1">Verification Notes:</span>
+                        <div class="p-2 bg-white rounded border text-dark">{{ loan.verification_notes }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Verification Actions Form -->
+                {% if loan.status in 'PENDING UNDER_REVIEW' %}
+                <form method="POST" action="{% url 'staff_loan_verify_action' loan.id %}" id="verify-form" class="mb-3">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">Underwriting Notes &amp; Findings</label>
+                        <textarea name="notes" class="form-control" rows="3" placeholder="Enter verification notes, repayment capacity checks, eligibility confirmation..."></textarea>
+                        <div class="form-text small">Mandatory when recommending approval or rejection.</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {% if loan.status == 'PENDING' %}
+                        <button type="submit" name="action_type" value="under_review" class="btn btn-outline-info rounded-pill fw-semibold py-2">
+                            <i class="bi bi-eye me-1"></i> Mark Application Under Review
+                        </button>
+                        {% endif %}
+
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button type="submit" name="action_type" value="recommend_approve" class="btn btn-success w-100 rounded-pill fw-semibold py-2">
+                                    <i class="bi bi-hand-thumbs-up me-1"></i> Recommend Approve
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" name="action_type" value="recommend_reject" class="btn btn-outline-danger w-100 rounded-pill fw-semibold py-2">
+                                    <i class="bi bi-hand-thumbs-down me-1"></i> Recommend Reject
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" name="action_type" value="add_note" class="btn btn-outline-secondary rounded-pill py-2 small">
+                            <i class="bi bi-pencil-square me-1"></i> Add Note Only
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="alert alert-secondary small rounded-3 mb-3">
+                    <i class="bi bi-lock me-1"></i> This loan application is <strong>{{ loan.status }}</strong>. Verification actions are locked.
+                </div>
+                {% endif %}
+
+                <!-- Role Boundary Notice -->
+                <div class="p-2 bg-light rounded-3 text-muted" style="font-size: 0.75rem;">
+                    <i class="bi bi-shield-lock me-1"></i>
+                    <strong>Underwriting Role Boundary:</strong> Employees evaluate risk and record formal recommendations. Final authorization and atomic fund disbursement is strictly executed by Bank Administration.
+                </div>
+            </div>
+
+            <!-- Admin Final Decision Desk (Visible if Admin) -->
+            {% if is_admin %}
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4 border-top border-4 border-danger">
+                <h5 class="fw-bold text-dark mb-2">
+                    <i class="bi bi-shield-fill-check text-danger me-2"></i>Administration Decision Desk
+                </h5>
+                <p class="small text-muted mb-3">Administrative authority for one-time disbursement or application rejection.</p>
+
+                {% if loan.status in 'PENDING UNDER_REVIEW' %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-dark">Administrative Decision Reason</label>
+                    <textarea id="admin-reason-input" class="form-control" rows="2" placeholder="Administrative rationale for approval/rejection (optional for approval, recommended for rejection)..."></textarea>
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-6">
+                        <form method="POST" action="{% url 'approve_loan' loan.id %}" onsubmit="syncAdminReason(this)">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'staff_loan_detail' loan.id %}">
+                            <input type="hidden" name="reason" class="hidden-admin-reason">
+                            <button type="submit" class="btn btn-success w-100 rounded-pill fw-bold py-2 shadow-sm" onclick="return confirm('Confirm one-time approval and immediate fund disbursement of ₹{{ loan.amount }} to account {{ account.account_number }}?');">
+                                <i class="bi bi-check-circle me-1"></i> Approve &amp; Disburse
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-6">
+                        <form method="POST" action="{% url 'reject_loan' loan.id %}" onsubmit="syncAdminReason(this)">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'staff_loan_detail' loan.id %}">
+                            <input type="hidden" name="reason" class="hidden-admin-reason">
+                            <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold py-2 shadow-sm" onclick="return confirm('Confirm rejection of loan application #{{ loan.id }}?');">
+                                <i class="bi bi-x-circle me-1"></i> Reject Application
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-3 bg-light rounded-3 small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Final Status:</span>
+                        <span class="fw-bold {% if loan.status == 'APPROVED' %}text-success{% else %}text-danger{% endif %}">{{ loan.status }}</span>
+                    </div>
+                    {% if loan.admin_decided_by %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Decided By:</span>
+                        <span class="text-dark">{{ loan.admin_decided_by.username }}</span>
+                    </div>
+                    {% endif %}
+                    {% if loan.disbursed_at %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Disbursed On:</span>
+                        <span class="text-dark">{{ loan.disbursed_at|date:"d M Y, H:i" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if loan.admin_decision_reason %}
+                    <div class="mt-2 pt-2 border-top">
+                        <span class="text-muted d-block mb-1">Administrative Reason:</span>
+                        <div class="p-2 bg-white rounded border">{{ loan.admin_decision_reason }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Audit Trail & Decision History -->
+            <div class="card p-4 border-0 shadow-sm bg-white rounded-4 mb-4">
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="bi bi-journal-text text-secondary me-2"></i>Verification Audit Trail
+                </h6>
+
+                {% if verification_logs %}
+                <div class="timeline">
+                    {% for log in verification_logs %}
+                    <div class="pb-3 mb-3 border-bottom small">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div>
+                                {% if log.action == 'ADMIN_APPROVE' %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1">Admin Approved</span>
+                                {% elif log.action == 'ADMIN_REJECT' %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-1">Admin Rejected</span>
+                                {% elif log.action == 'RECOMMEND_APPROVE' %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-2 py-1">Recommended Approve</span>
+                                {% elif log.action == 'RECOMMEND_REJECT' %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-2 py-1">Recommended Reject</span>
+                                {% elif log.action == 'UNDER_REVIEW' %}
+                                <span class="badge bg-info-subtle text-info rounded-pill px-2 py-1">Under Review</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-1">{{ log.action }}</span>
+                                {% endif %}
+                                <strong class="ms-1 text-dark">{{ log.performed_by.username|default:"System" }}</strong>
+                            </div>
+                            <span class="text-muted" style="font-size: 0.75rem;">{{ log.created_at|date:"d M, H:i" }}</span>
+                        </div>
+                        {% if log.notes %}
+                        <div class="text-muted ps-1">{{ log.notes }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted small">No verification events logged yet.</div>
+                {% endif %}
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+function syncAdminReason(form) {
+    var reason = document.getElementById('admin-reason-input').value;
+    form.querySelector('.hidden-admin-reason').value = reason;
+    return true;
+}
+</script>
+
+{% endblock %}
+

@@ -1,0 +1,260 @@
+{% extends "base_admin.html" %}
+
+{% block title %}System Audit Surveillance — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Header & Action Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Compliance &amp; Governance
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                System Audit Surveillance &amp; Forensics
+            </h3>
+            <p class="text-muted small mb-0">Immutable multi-source surveillance across staff actions, profile audits, underwriting, teller ops &amp; card lifecycle.</p>
+        </div>
+        <div class="mt-3 mt-md-0 d-flex gap-2">
+            <a href="{% url 'admin_audit_export_csv' %}?source={{ selected_source }}&q={{ query }}&action_type={{ selected_action }}&role={{ selected_role }}&date_from={{ date_from }}&date_to={{ date_to }}" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-semibold">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export Audit CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top Audit Telemetry Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4 bg-light">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Activity Log Records</span>
+                <h4 class="fw-bold font-mono text-dark mb-0">{{ counts.total_activity_logs }}</h4>
+                <span class="text-muted small" style="font-size: 0.72rem;">Employee &amp; admin events</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Teller Counter Operations</span>
+                <h4 class="fw-bold font-mono text-success mb-0">{{ counts.total_teller_logs }}</h4>
+                <span class="text-success small fw-medium" style="font-size: 0.72rem;">Idempotent counter receipts</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Underwriting Verifications</span>
+                <h4 class="fw-bold font-mono text-primary mb-0">{{ counts.total_loan_logs }}</h4>
+                <span class="text-primary small fw-medium" style="font-size: 0.72rem;">Loan review &amp; decisions</span>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 h-100 border shadow-sm rounded-4" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);">
+                <span class="text-muted small fw-semibold text-uppercase d-block mb-1">Debit Card Lifecycle</span>
+                <h4 class="fw-bold font-mono text-danger mb-0">{{ counts.total_card_logs }}</h4>
+                <span class="text-danger small fw-medium" style="font-size: 0.72rem;">Issue, block, unblock, cancel</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Card -->
+    <div class="card p-3 p-md-4 mb-4 border shadow-sm rounded-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <!-- Source Selector -->
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Audit Stream / Source</label>
+                <select name="source" class="form-select bg-light">
+                    <option value="employee" {% if selected_source == 'employee' %}selected{% endif %}>Employee &amp; Admin Activity (Default)</option>
+                    <option value="profile" {% if selected_source == 'profile' %}selected{% endif %}>Customer Profile Modifications</option>
+                    <option value="loan" {% if selected_source == 'loan' %}selected{% endif %}>Loan Underwriting &amp; Decisions</option>
+                    <option value="card" {% if selected_source == 'card' %}selected{% endif %}>Virtual Debit Card Lifecycle</option>
+                    <option value="teller" {% if selected_source == 'teller' %}selected{% endif %}>Teller Counter Operations</option>
+                </select>
+            </div>
+
+            <!-- Search Query -->
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-muted">Search Logs</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ query }}" class="form-control bg-light border-start-0" placeholder="Actor, customer, ref, keyword...">
+                </div>
+            </div>
+
+            <!-- Action Type Filter -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Action Type</label>
+                <input type="text" name="action_type" value="{{ selected_action }}" class="form-control bg-light" placeholder="e.g. KYC, LOAN, BLOCK">
+            </div>
+
+            <!-- Date Range -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Date From</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control bg-light">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-muted">Date To</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control bg-light">
+            </div>
+
+            <!-- Actions -->
+            <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                <button type="submit" class="btn btn-primary px-4 fw-semibold rounded-pill">
+                    <i class="bi bi-funnel me-1"></i> Apply Filters
+                </button>
+                <a href="{% url 'admin_audit_log' %}" class="btn btn-outline-secondary px-3 rounded-pill" title="Reset Filters">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Audit Ledger Table Card -->
+    <div class="card border shadow-sm rounded-4 overflow-hidden mb-4">
+        <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-bold text-dark mb-0">
+                    <i class="bi bi-shield-check text-primary me-2"></i>Audit Events Stream
+                </span>
+                <span class="badge bg-secondary-subtle text-muted rounded-pill font-mono px-3 py-1 ms-2">
+                    Showing {{ page_obj.start_index|default:0 }}–{{ page_obj.end_index|default:0 }} of {{ paginator.count }}
+                </span>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill small font-mono">
+                <i class="bi bi-lock-fill me-1"></i>Strictly Immutable Ledger
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-4">Timestamp</th>
+                        <th>Actor</th>
+                        <th>Action Type</th>
+                        <th>Target / Reference</th>
+                        <th>Details / Justification</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in page_obj %}
+                    <tr>
+                        <td class="ps-4 font-mono small text-muted" style="white-space: nowrap;">
+                            {{ item.timestamp|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">
+                                @{{ item.actor_username|default:"System" }}
+                            </div>
+                            <span class="badge {% if item.actor_role == 'ADMIN' %}bg-danger-subtle text-danger{% elif item.actor_role == 'EMPLOYEE' %}bg-warning-subtle text-dark{% else %}bg-primary-subtle text-primary{% endif %}" style="font-size: 0.65rem;">
+                                {{ item.actor_role|default:"SYSTEM" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-mono small">
+                                {{ item.action }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if item.target_display %}
+                                <span class="font-mono small fw-semibold text-dark">{{ item.target_display }}</span>
+                            {% elif item.account_number %}
+                                <span class="font-mono small text-muted">A/C #••••{{ item.account_number|slice:"-4:" }}</span>
+                            {% elif item.customer_username %}
+                                <span class="font-mono small text-primary">@{{ item.customer_username }}</span>
+                            {% else %}
+                                <span class="text-muted small">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td style="max-width: 320px;">
+                            <div class="small text-dark text-truncate" title="{{ item.description }}">
+                                {{ item.description|default:"-" }}
+                            </div>
+                            {% if item.changes %}
+                            <details class="small mt-1 text-muted">
+                                <summary class="cursor-pointer font-mono" style="font-size: 0.70rem;">View Diff Details</summary>
+                                <pre class="bg-light p-2 rounded border small mb-0 mt-1 font-mono" style="font-size: 0.68rem; white-space: pre-wrap;">{{ item.changes }}</pre>
+                            </details>
+                            {% endif %}
+                        </td>
+                        <td class="font-mono small text-muted" style="white-space: nowrap;">
+                            {% if item.ip_address %}
+                                <i class="bi bi-geo-alt me-1"></i>{{ item.ip_address }}
+                            {% else %}
+                                <span class="text-muted opacity-50" title="Not captured by this audit model source">Not Recorded</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <i class="bi bi-shield-x text-muted mb-3 d-block" style="font-size: 2.5rem;"></i>
+                            <h6 class="fw-bold text-dark">No Audit Events Found</h6>
+                            <p class="text-muted small mb-0">No records match your selected audit source and filter criteria.</p>
+                            {% if query or selected_action or date_from or date_to %}
+                            <a href="{% url 'admin_audit_log' %}" class="btn btn-outline-primary btn-sm rounded-pill mt-3 px-3">
+                                Clear Filters
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if paginator.num_pages > 1 %}
+        <div class="card-footer bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&source={{ selected_source }}{% if query %}&q={{ query }}{% endif %}{% if selected_action %}&action_type={{ selected_action }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Previous</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                {% endif %}
+
+                {% for num in paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}&source={{ selected_source }}{% if query %}&q={{ query }}{% endif %}{% if selected_action %}&action_type={{ selected_action }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&source={{ selected_source }}{% if query %}&q={{ query }}{% endif %}{% if selected_action %}&action_type={{ selected_action }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">Next</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

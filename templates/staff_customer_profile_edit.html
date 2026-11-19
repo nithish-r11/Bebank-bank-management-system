@@ -1,0 +1,254 @@
+{% extends 'base_employee.html' %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+.profile-edit-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+}
+.section-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+.font-mono {
+    font-family: 'Consolas', 'SF Mono', 'Courier New', monospace;
+}
+.badge-role {
+    background-color: #e0e7ff;
+    color: #3730a3;
+    font-weight: 600;
+}
+.badge-audit {
+    background-color: #f1f5f9;
+    color: #475569;
+    font-size: 0.78rem;
+}
+.btn-save-profile {
+    background: #0a192f;
+    border: none;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 10px 24px;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+.btn-save-profile:hover {
+    background: #112240;
+    color: #ffffff;
+}
+</style>
+
+<div class="container mt-3 profile-edit-wrapper">
+
+    <!-- Header & Navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1 text-dark">
+                <i class="bi bi-person-gear me-2"></i>Employee Profile Control
+            </h3>
+            <p class="text-muted small mb-0">Authorized branch staff profile maintenance for registered customer accounts.</p>
+        </div>
+        <div>
+            <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary btn-sm px-3 rounded-pill">
+                <i class="bi bi-arrow-left me-1"></i> Employee Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Customer Summary Card (Read-Only Identity) -->
+    <div class="section-card">
+        <div class="row align-items-center g-3">
+            <div class="col-md-7">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; font-size: 26px;">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">{{ target_user.get_full_name|default:target_user.username }}</h5>
+                        <div class="small text-muted">
+                            Username: <span class="font-mono fw-semibold text-dark">{{ target_user.username }}</span>
+                            <span class="badge badge-role ms-2">Customer</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5 text-md-end">
+                <div class="small text-muted mb-1">
+                    KYC Status:
+                    {% if target_user.kyc_status == 'APPROVED' %}
+                        <span class="badge bg-success">Verified Active</span>
+                    {% elif target_user.kyc_status == 'PENDING' %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    {% elif target_user.kyc_status == 'UNDER_REVIEW' %}
+                        <span class="badge bg-info text-dark">Under Review</span>
+                    {% elif target_user.kyc_status == 'REJECTED' %}
+                        <span class="badge bg-danger">Rejected</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Not Submitted</span>
+                    {% endif %}
+                </div>
+                <div class="small text-muted">
+                    Profile Completeness: <strong class="text-dark">{{ completeness }}%</strong>
+                </div>
+                {% if target_user.profile_updated_at %}
+                <div class="small text-muted mt-1">
+                    Last Updated: {{ target_user.profile_updated_at|date:"d M Y, H:i" }}
+                    {% if target_user.profile_updated_by %}
+                        by <span class="font-mono text-dark fw-semibold">{{ target_user.profile_updated_by.username }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Permitted Profile Edit Form -->
+    <div class="section-card">
+        <h5 class="fw-bold mb-3 text-dark">
+            <i class="bi bi-pencil-square me-1"></i> Update Contact & Residential Details
+        </h5>
+        <p class="text-muted small mb-4">
+            Branch employees may update contact details after verifying the customer's request.
+            Security attributes (Username, Role, Security Flags) cannot be altered through this form.
+        </p>
+
+        <form method="post" action="{% url 'staff_customer_profile_edit' target_user.id %}">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-muted">First Name</label>
+                    <input type="text" name="first_name" class="form-control" value="{{ target_user.first_name }}" maxlength="50" placeholder="First Name">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-muted">Last Name</label>
+                    <input type="text" name="last_name" class="form-control" value="{{ target_user.last_name }}" maxlength="50" placeholder="Last Name">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-muted">Email Address</label>
+                    <input type="email" name="email" class="form-control" value="{{ target_user.email }}" maxlength="100" placeholder="customer@example.com">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold text-muted">Phone Number</label>
+                    <input type="text" name="phone" class="form-control font-mono" value="{{ target_user.phone|default:'' }}" maxlength="15" placeholder="10-15 digit phone number">
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label small fw-semibold text-muted">Residential Address</label>
+                    <textarea name="address" class="form-control" rows="2" placeholder="Street address, city, state">{{ target_user.address|default:'' }}</textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-muted">Pincode</label>
+                    <input type="text" name="pincode" class="form-control font-mono" value="{{ target_user.pincode|default:'' }}" maxlength="10" placeholder="Postal Code">
+                </div>
+
+                <!-- Protected Attributes Banner -->
+                <div class="col-12 mt-4 pt-3 border-top">
+                    <div class="bg-light p-3 rounded-3 border">
+                        <span class="small fw-bold text-secondary d-block mb-2">
+                            <i class="bi bi-shield-lock me-1"></i> Immutable Security Attributes (Protected)
+                        </span>
+                        <div class="row g-2 small text-muted">
+                            <div class="col-sm-4"><strong>Username:</strong> {{ target_user.username }}</div>
+                            <div class="col-sm-4"><strong>Role:</strong> {{ target_user.role }}</div>
+                            <div class="col-sm-4"><strong>Account Lock:</strong> {% if target_user.account_locked %}Locked 🔒{% else %}Normal Active 🔓{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 text-end mt-4">
+                    <a href="{% url 'employee_dashboard' %}" class="btn btn-outline-secondary me-2 px-3">Cancel</a>
+                    <button type="submit" class="btn btn-save-profile">
+                        <i class="bi bi-check2-circle me-1"></i> Save Profile Details
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Linked Bank Accounts -->
+    <div class="section-card">
+        <h5 class="fw-bold mb-3 text-dark">
+            <i class="bi bi-bank me-1"></i> Linked Bank Accounts
+        </h5>
+        {% if linked_accounts %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-muted text-uppercase">
+                    <tr>
+                        <th>Account Number</th>
+                        <th>Type</th>
+                        <th>Balance</th>
+                        <th>Opened On</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for acc in linked_accounts %}
+                    <tr>
+                        <td><span class="font-mono fw-bold text-dark">{{ acc.account_number }}</span></td>
+                        <td><span class="badge bg-light text-dark border">{{ acc.account_type }}</span></td>
+                        <td><span class="font-mono fw-bold text-success">₹{{ acc.balance }}</span></td>
+                        <td><span class="small text-muted">{{ acc.created_at|date:"d M Y" }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">No bank accounts linked to this customer.</p>
+        {% endif %}
+    </div>
+
+    <!-- Audit Log History -->
+    {% if audit_logs %}
+    <div class="section-card">
+        <h5 class="fw-bold mb-3 text-dark">
+            <i class="bi bi-journal-text me-1"></i> Profile Modification Audit Trail
+        </h5>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light small text-muted">
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Updated By</th>
+                        <th>Changes Recorded</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td class="small text-muted font-mono">{{ log.updated_at|date:"d M Y H:i:s" }}</td>
+                        <td>
+                            <span class="badge badge-audit font-mono fw-semibold">
+                                {{ log.updated_by.username|default:"System" }}
+                            </span>
+                        </td>
+                        <td class="small text-dark">{{ log.changes }}</td>
+                        <td class="small text-muted font-mono">{{ log.ip_address|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+

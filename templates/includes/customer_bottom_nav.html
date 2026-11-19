@@ -1,0 +1,97 @@
+{% load static %}
+<style>
+/* ==========================================================================
+   BEBANK Standard Customer Bottom Navigation Bar
+   Approved Reference Design — Unified Across All Customer Modules
+   ========================================================================== */
+.bottom-nav, .bottom-nav * {
+    box-sizing: border-box;
+}
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 520px;
+    height: 78px;
+    background: linear-gradient(120deg, #071326, #0a192f);
+    border-top-left-radius: 28px;
+    border-top-right-radius: 28px;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 1030;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bottom-nav a {
+    flex: 1;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 12px;
+    text-decoration: none;
+    transition: color 0.2s ease, transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+}
+
+.bottom-nav i {
+    display: block;
+    font-size: 22px;
+    margin-bottom: 4px;
+    line-height: 1;
+}
+
+.bottom-nav a.active {
+    color: #7b7cff;
+    transform: translateY(-4px);
+    font-weight: 600;
+}
+
+.bottom-nav a:hover {
+    color: #ffffff;
+}
+
+/* Dedicated clearance spacer ensuring page content/buttons never get covered by the fixed bottom navbar */
+.customer-bottom-nav-spacer {
+    height: 100px;
+    width: 100%;
+    clear: both;
+    pointer-events: none;
+    display: block;
+}
+</style>
+
+<!-- Safe area clearance spacer -->
+<div class="customer-bottom-nav-spacer" aria-hidden="true"></div>
+
+<!-- Standard Customer Bottom Navigation -->
+<nav class="bottom-nav" aria-label="Customer Navigation">
+    <a href="{% url 'customer_dashboard' %}" class="{% if active_tab == 'home' %}active{% endif %}">
+        <i class="bi bi-house"></i>
+        <span>Home</span>
+    </a>
+    <a href="{% url 'withdraw' %}" class="{% if active_tab == 'withdraw' %}active{% endif %}">
+        <i class="bi bi-dash-circle"></i>
+        <span>Withdraw</span>
+    </a>
+    <a href="{% url 'transfer' %}" class="{% if active_tab == 'transfer' %}active{% endif %}">
+        <i class="bi bi-arrow-left-right"></i>
+        <span>Transfer</span>
+    </a>
+    <a href="{% url 'history' %}" class="{% if active_tab == 'history' %}active{% endif %}">
+        <i class="bi bi-clock-history"></i>
+        <span>History</span>
+    </a>
+    <a href="{% url 'logout' %}" class="{% if active_tab == 'logout' %}active{% endif %}">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Logout</span>
+    </a>
+</nav>

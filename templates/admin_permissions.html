@@ -1,0 +1,174 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Role Permissions &amp; Security Boundaries — BEBANK Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 px-md-4 py-2">
+
+    <!-- Back & Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-semibold small">
+                    Security Governance
+                </span>
+            </div>
+            <h3 class="fw-bold mb-0 text-dark">
+                Role Permissions &amp; RBAC Boundaries
+            </h3>
+            <p class="text-muted small mb-0">Three-tier architectural access control and mandatory financial safety boundaries.</p>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
+            <i class="bi {% if message.tags == 'error' %}bi-exclamation-octagon-fill{% elif message.tags == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- MANDATORY FINANCIAL SECURITY BOUNDARIES (ALERT) -->
+    <div class="card p-4 mb-4 border-danger border-opacity-25 bg-danger-subtle bg-opacity-10 rounded-4">
+        <h5 class="fw-bold text-danger mb-2">
+            <i class="bi bi-shield-slash-fill me-2"></i>Non-Negotiable Core Financial Boundaries
+        </h5>
+        <p class="small text-muted mb-3">The following boundaries are hard-coded in the core banking architecture and cannot be bypassed or dynamically relaxed:</p>
+        <div class="row g-3 small">
+            <div class="col-md-6 col-xl-3">
+                <div class="p-3 bg-white rounded-3 border border-danger border-opacity-25 h-100">
+                    <div class="fw-bold text-dark mb-1"><i class="bi bi-lock-fill text-danger me-1"></i> Final Loan Disbursement</div>
+                    <p class="text-muted mb-0">Employees may only recommend approval or rejection. Only authorized Administrators can disburse funds into borrower accounts.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="p-3 bg-white rounded-3 border border-danger border-opacity-25 h-100">
+                    <div class="fw-bold text-dark mb-1"><i class="bi bi-credit-card-2-front-fill text-danger me-1"></i> Debit Card Overrides</div>
+                    <p class="text-muted mb-0">Employees see masked PANs only. Admin-level security overrides (permanent cancellation, limit resets) are reserved for Administrators.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="p-3 bg-white rounded-3 border border-danger border-opacity-25 h-100">
+                    <div class="fw-bold text-dark mb-1"><i class="bi bi-person-lines-fill text-danger me-1"></i> Ticket Assignment</div>
+                    <p class="text-muted mb-0">Employees can self-claim or release their own tickets. Arbitrary dispatch of support tickets across staff members requires Administrator role.</p>
+                </div>
+            </div>
+            <div class="col-md-6 col-xl-3">
+                <div class="p-3 bg-white rounded-3 border border-danger border-opacity-25 h-100">
+                    <div class="fw-bold text-dark mb-1"><i class="bi bi-eye-slash-fill text-danger me-1"></i> Audit Surveillance</div>
+                    <p class="text-muted mb-0">Employees are strictly restricted to their own operational activity logs. System-wide audit visibility across all staff is restricted to Administrators.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROLE CAPABILITIES MATRIX -->
+    <div class="card p-4 border shadow-sm rounded-4 mb-4">
+        <h5 class="fw-bold text-dark mb-3">
+            <i class="bi bi-diagram-3-fill text-primary me-2"></i>Three-Tier RBAC Capability Matrix
+        </h5>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="small text-uppercase">
+                        <th style="width: 40%;">System Function / Capability</th>
+                        <th class="text-center" style="width: 20%;">Customer</th>
+                        <th class="text-center" style="width: 20%;">Employee (Teller)</th>
+                        <th class="text-center" style="width: 20%;">Administrator</th>
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    <tr>
+                        <td class="fw-semibold">View Personal Bank Accounts &amp; Ledger</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Self Only</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Read-Only (360&deg;)</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Full Access</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Process In-Branch Cash Counter Deposits</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Authorized Teller</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Full Access</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Process In-Branch Cash Counter Withdrawals</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Authorized Teller</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Full Access</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Customer Self-Service Transfer (P2P)</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Authorized</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Open New Customer Account with Opening Deposit</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Authorized</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Authorized</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Review &amp; Verify Customer KYC Documents</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Submit Only</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Review &amp; Decide</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Full Access</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Review Loan Applications &amp; Recommend Decision</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Apply Only</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Recommend Only</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Final Decision &amp; Disburse</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Disburse Approved Loan Principal to Customer Account</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> 403 Forbidden</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Exclusive Admin</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Manage Virtual Debit Cards (Masked vs Override)</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Own Cards</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Masked Surveillance</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Administrative Override</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Helpdesk Support Ticket Queue &amp; Replies</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Own Tickets</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Self-Claim &amp; Reply</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Arbitrary Assign &amp; Reply</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Staff Management (Add, Edit, Lock, Deactivate)</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> 403 Forbidden</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Exclusive Admin</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">System Audit Trail Access</td>
+                        <td class="text-center text-danger"><i class="bi bi-x-circle-fill"></i> Forbidden</td>
+                        <td class="text-center text-warning"><i class="bi bi-check-circle-fill"></i> Self-Only Filtered</td>
+                        <td class="text-center text-success"><i class="bi bi-check-circle-fill"></i> Bank-Wide Surveillance</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-semibold">Direct Ledger Balance Editing</td>
+                        <td class="text-center text-danger"><i class="bi bi-slash-circle-fill"></i> Prohibited</td>
+                        <td class="text-center text-danger"><i class="bi bi-slash-circle-fill"></i> Prohibited</td>
+                        <td class="text-center text-danger"><i class="bi bi-slash-circle-fill"></i> Prohibited (Double-Entry Only)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
